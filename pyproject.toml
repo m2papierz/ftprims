@@ -1,0 +1,56 @@
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ftprims"
+version = "0.1.0"
+description = "FTQC primitives benchmark suite (Qualtran + Cirq) with QREF/Bartiq export"
+readme = "README.md"
+license = { file = "LICENSE" }
+requires-python = ">=3.10,<3.13"
+
+dependencies = [
+    "bartiq>=0.12.1",
+    "cirq-core>=1.5.0",
+    "click>=8.3.1",
+    "matplotlib>=3.10.8",
+    "numpy>=2.2.6",
+    "pyyaml>=6.0.3",
+    "qualtran>=0.7.0",
+]
+
+[dependency-groups]
+dev = [
+    "black[jupyter]>=26.1.0",
+    "isort>=8.0.0",
+    "pre-commit>=4.5.1",
+    "pytest>=9.0.2",
+]
+
+[project.scripts]
+ftprims = "ftprims.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ftprims"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = ["--import-mode=importlib"]
+
+[tool.isort]
+src_paths = [
+    "src/",
+    "experiments/",
+    "tests/",
+]
+profile = "black"
+line_length = 88
+lines_after_imports = 2
+
+[tool.black]
+line-length = 88
+target-version = ["py311"]
