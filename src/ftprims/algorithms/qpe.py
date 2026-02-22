@@ -12,6 +12,9 @@ from ftprims.algorithms._base import (
 )
 
 
+__all__ = ["QPEBenchmark"]
+
+
 @register
 class QPEBenchmark(Benchmark):
     name = "qpe"

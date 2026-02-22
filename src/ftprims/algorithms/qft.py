@@ -12,6 +12,9 @@ from ftprims.algorithms._base import (
 )
 
 
+__all__ = ["QFTBenchmark"]
+
+
 @register
 class QFTBenchmark(Benchmark):
     name = "qft"

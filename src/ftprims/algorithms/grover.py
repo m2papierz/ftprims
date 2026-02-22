@@ -12,6 +12,9 @@ from ftprims.algorithms._base import (
 )
 
 
+__all__ = ["GroverBenchmark"]
+
+
 @register
 class GroverBenchmark(Benchmark):
     name = "grover"

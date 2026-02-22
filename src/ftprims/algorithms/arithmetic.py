@@ -12,6 +12,9 @@ from ftprims.algorithms._base import (
 )
 
 
+__all__ = ["ArithemticBenchmark"]
+
+
 @register
 class ArithmeticBenchmark(Benchmark):
     name = "arithmetic"
