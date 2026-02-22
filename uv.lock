@@ -893,6 +893,7 @@ name = "ftprims"
 version = "0.1.0"
 source = { editable = "." }
 dependencies = [
+    { name = "attrs" },
     { name = "bartiq" },
     { name = "cirq-core", version = "1.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "cirq-core", version = "1.6.1", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
@@ -914,6 +915,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "attrs", specifier = ">=25.4.0" },
     { name = "bartiq", specifier = ">=0.12.1" },
     { name = "cirq-core", specifier = ">=1.5.0" },
     { name = "click", specifier = ">=8.3.1" },
