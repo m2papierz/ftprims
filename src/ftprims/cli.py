@@ -38,7 +38,7 @@ def run(
         "primitive": primitive,
         "params": params,
         "logical": {
-            "qubits": costs.qubit,
+            "qubits": costs.qubits,
             "t_count": costs.t_count,
             "clifford_count": costs.clifford_count,
             "rotation_count": costs.rotation_count,
@@ -70,7 +70,7 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
 @click.option("--out", type=click.Path(), required=True, help="Output YAML path")
 def export_qref(primitive: str, param: tuple[str, ...], out: str) -> None:
     """Export benchmark as a QREF v1 program."""
-    from ftprims.export.qref_export import build_qref_program, save_qref
+    from ftprims.export import build_qref_program, save_qref
 
     bench = registry[primitive]
     params = _parse_params(param)

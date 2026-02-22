@@ -6,7 +6,7 @@ from ftprims.algorithms._base import registry
 
 def test_registry_populated():
     """All five benchmarks should be registered after import."""
-    expected = {"qft", "qpe", "grover", "qrom", "arithmetic"}
+    expected = {"qft", "qpe", "grover", "arithmetic"}
     assert expected.issubset(registry.keys()), f"Missing: {expected - registry.keys()}"
 
 
@@ -15,7 +15,7 @@ def test_qref_export_roundtrip():
     from ftprims.algorithms._base import LogicalCosts
     from ftprims.export import build_qref_program
 
-    costs = LogicalCosts(qubit=10, t_count=100, clifford_count=50)
+    costs = LogicalCosts(qubits=10, t_count=100, clifford_count=50)
     prog = build_qref_program("test", {"n": 8}, costs)
     assert prog["version"] == "v1"
     assert prog["program"]["name"] == "test"

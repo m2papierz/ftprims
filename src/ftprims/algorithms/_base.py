@@ -12,7 +12,7 @@ from qualtran import Bloq
 class LogicalCosts:
     """Logical-level resource counts."""
 
-    qubit: int
+    qubits: int
     t_count: int
     clifford_count: int = 0
     rotation_count: int = 0
