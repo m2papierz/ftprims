@@ -15,10 +15,10 @@ Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qu
 > - [x] Project scaffold, CLI skeleton, benchmark protocol & registry
 >
 > ### In progress
+> - [ ] Arithmetic benchmark (Add, OutOfPlaceAdder, LessThanEqual, Multiplier, ModAdd)
 > - [ ] QFT benchmark (Textbook + Approximate) — `build_bloq` / `logical_costs` / `verify_small`
 > - [ ] QPE benchmark (Textbook, pluggable U)
-> - [ ] Grover benchmark (bitstring / threshold oracle)
-> - [ ] Arithmetic benchmark (Add, OutOfPlaceAdder, LessThanEqual)
+> - [ ] QROM benchmark (QROM + SelectSwapQROM, T vs ancille trade-off)
 > - [ ] Logical resource extraction (`get_cost_value` + `QECGatesCost`)
 > - [ ] QREF export + Bartiq cost compilation
 >
@@ -37,10 +37,10 @@ Benchmark canonical FTQC building blocks, extract logical & physical resource co
 
 | Primitive | Variants | Key metric |
 |-----------|----------|------------|
+| **Arithmetic** | Add, OutOfPlaceAdder, LessThanEqual, Multiplier, ModAdd | T-count vs bitsize |
 | **QFT** | Textbook, Approximate | T-count vs n |
 | **QPE** | Textbook (pluggable U, QFT⁻¹) | T-count vs precision bits |
-| **Grover** | Bitstring / Threshold oracle | T-count, iterations |
-| **Arithmetic** | Add, OutOfPlaceAdder, LessThanEqual | T-count vs bitsize |
+| **QROM** | QROM, SelectSwapQROM | T-count vs table size, T/ancille trade-off |
 
 ## Quick start
 

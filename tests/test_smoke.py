@@ -6,7 +6,7 @@ from ftprims.algorithms._base import registry
 
 def test_registry_populated():
     """All five benchmarks should be registered after import."""
-    expected = {"qft", "qpe", "grover", "arithmetic"}
+    expected = {"qft", "qpe", "qrom", "arithmetic"}
     assert expected.issubset(registry.keys()), f"Missing: {expected - registry.keys()}"
 
 

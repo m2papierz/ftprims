@@ -1,4 +1,4 @@
-"""Grover benchmark with pluggable oracle."""
+"""QROM / SelectSwapQROM benchmark."""
 
 from __future__ import annotations
 
@@ -12,19 +12,20 @@ from ftprims.algorithms._base import (
 )
 
 
-__all__ = ["GroverBenchmark"]
+__all__ = ["QROMBenchmark"]
 
 
 @register
-class GroverBenchmark(Benchmark):
-    name = "grover"
+class QROMBenchmark(Benchmark):
+    name = "qrom"
 
     def build_bloq(
         self,
         *,
-        n: int,
-        k: int | None = None,
-        oracle: str = "bitstring",
+        data_size: int,
+        target_bitsizes: tuple[int, ...] = (8,),
+        variant: str = "basic",
+        k: int = 1,
     ) -> Bloq: ...
 
     def logical_costs(self, bloq: Bloq) -> LogicalCosts: ...
@@ -32,5 +33,6 @@ class GroverBenchmark(Benchmark):
     def verify_small(
         self,
         *,
-        n: int,
+        data_size: int,
+        target_bitsizes: tuple[int, ...] = (8,),
     ) -> VerificationResult: ...

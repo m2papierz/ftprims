@@ -1,4 +1,4 @@
-"""Arithmetic benchmark - Add, OutOfPlaceAdder, LessThanEqual."""
+"""Arithmetic benchmark - Add, OutOfPlaceAdder, LessThanEqual, Multiplier, ModAdd."""
 
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ class ArithmeticBenchmark(Benchmark):
         self,
         *,
         n: int,
-        op: str,
+        op: str,  # add | add_oop | leq | mul | modadd
     ) -> Bloq: ...
 
     def logical_costs(self, bloq: Bloq) -> LogicalCosts: ...
