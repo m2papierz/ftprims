@@ -1,6 +1,6 @@
 """Resource estimation — logical costs extracted from Qualtran bloqs.
 
-T-count is reported as *T-equivalents*: raw T gates plus 4× the number
+T-count is reported as *T-equivalents*: raw T gates plus 4x the number
 of And/CCZ operations (each CCZ decomposes into 4 T gates in the
 surface-code model).
 """
