@@ -1,41 +1,29 @@
-"""Resource estimation - logical & physical layers."""
+"""Resource estimation — logical costs extracted from Qualtran bloqs.
+
+T-count is reported as *T-equivalents*: raw T gates plus 4× the number
+of And/CCZ operations (each CCZ decomposes into 4 T gates in the
+surface-code model).
+"""
 
 from __future__ import annotations
 
 from qualtran import Bloq
 from qualtran.resource_counting import QECGatesCost, QubitCount, get_cost_value
 
-from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
-
-
-def estimate_physical(
-    logical: LogicalCosts,
-    *,
-    error_budget: float = 1e-3,
-    cycle_time_us: float = 1.0,
-) -> PhysicalCosts:
-    """
-    Estimate physical costs using Qualtran's PhysicalCostModel.
-
-    This is a thin wrapper — the heavy lifting is done by
-    ``qualtran.surface_code.PhysicalCostModel``.
-    """
-    ...
+from ftprims.algorithms._base import LogicalCosts
 
 
 def extract_logical_costs(bloq: Bloq) -> LogicalCosts:
     """Pull qubit count and gate costs from a Qualtran Bloq."""
     qubits = get_cost_value(bloq, QubitCount())
     gates = get_cost_value(bloq, QECGatesCost())
+
+    t_ccz = gates.total_t_and_ccz_count()
+    t_equiv = t_ccz["n_t"] + 4 * t_ccz["n_ccz"]
+
     return LogicalCosts(
         qubits=int(qubits),
-        t_count=int(gates.total_t_count()),
-        clifford_count=int(
-            gates.total_clifford_count()
-            if hasattr(gates, "total_clifford_count")
-            else 0
-        ),
-        rotation_count=int(
-            gates.rotation_count if hasattr(gates, "rotation_count") else 0
-        ),
+        t_count=int(t_equiv),
+        clifford_count=int(gates.clifford),
+        rotation_count=int(gates.rotation),
     )

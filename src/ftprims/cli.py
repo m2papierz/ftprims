@@ -76,7 +76,14 @@ def export_qref(primitive: str, param: tuple[str, ...], out: str) -> None:
     params = _parse_params(param)
     bloq = bench.build_bloq(**params)
     costs = bench.logical_costs(bloq)
-    program = build_qref_program(primitive, params, costs)
+
+    port_size = params.get("n") or params.get("m")
+    program = build_qref_program(
+        primitive,
+        params,
+        costs,
+        port_size=int(port_size) if port_size is not None else None,
+    )
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     save_qref(program, out)
