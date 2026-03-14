@@ -1,0 +1,31 @@
+program:
+  children: []
+  connections: []
+  input_params: []
+  linked_params: []
+  local_variables: {}
+  meta: {}
+  name: qft_textbook
+  ports:
+  - direction: input
+    name: in
+    size: 32
+  - direction: output
+    name: out
+    size: 32
+  repetition: null
+  resources:
+  - name: T_gates
+    type: additive
+    value: 2014
+  - name: cliffords
+    type: additive
+    value: 575
+  - name: n_qubits
+    type: additive
+    value: 33
+  - name: rotations
+    type: additive
+    value: 435
+  type: null
+version: v1
