@@ -1,8 +1,13 @@
 """QPE benchmark: Textbook Quantum Phase Estimation.
 
-Uses ``ZPowGate(exponent=2·phi)`` as a toy unitary whose eigenstate
-|1⟩ has eigenvalue e^(2πi·phi). Verification runs Cirq simulation
-and checks the most-probable measurement outcome against the true phase.
+The default unitary is ``ZPowGate(exponent=2·phi)`` - a toy single-qubit
+gate whose eigenstate |1⟩ has eigenvalue e^(2πi·phi).  The benchmark
+layer accepts any single-qubit ``Bloq`` as ``unitary``, but the CLI
+preset uses ZPowGate.
+
+Verification enforces exact phases (phi = k/2^m) so that QPE output is
+deterministic and the check is bit-exact.  Register identification uses
+``to_cirq_circuit_and_quregs()`` instead of fragile qubit-name heuristics.
 """
 
 from __future__ import annotations
@@ -28,7 +33,7 @@ __all__ = ["QPEBenchmark"]
 _MAX_VERIFY_M = 8
 
 
-def _build_qpe(*, m: int, phi: float) -> Bloq:
+def _build_qpe(*, m: int, phi: float, unitary: Bloq | None = None) -> Bloq:
     """Construct a TextbookQPE for a single-qubit phase gate.
 
     Parameters
@@ -39,17 +44,28 @@ def _build_qpe(*, m: int, phi: float) -> Bloq:
         Phase of the toy unitary (0 ≤ phi < 1).  The unitary is
         ``ZPowGate(exponent=2·phi)`` whose eigenstate |1⟩ has
         eigenvalue e^(2πi·phi).
+    unitary:
+        Optional custom unitary bloq.  When ``None`` (the default),
+        uses ``ZPowGate(exponent=2·phi)``.
     """
     if m < 1:
         raise ValueError(f"Precision bits must be ≥ 1, got {m}")
     if not 0.0 <= phi < 1.0:
         raise ValueError(f"Phase must be in [0, 1), got {phi}")
 
-    unitary = ZPowGate(exponent=2 * phi)
+    if unitary is None:
+        unitary = ZPowGate(exponent=2 * phi)
+
     return TextbookQPE(
         unitary=unitary,
         ctrl_state_prep=RectangularWindowState(bitsize=m),
     )
+
+
+def _is_exact_phase(phi: float, m: int) -> bool:
+    """Check whether *phi* is an exact multiple of 1/2^m."""
+    scaled = phi * (1 << m)
+    return abs(scaled - round(scaled)) < 1e-12
 
 
 @register
@@ -58,8 +74,14 @@ class QPEBenchmark(Benchmark):
 
     name = "qpe"
 
-    def build_bloq(self, *, m: int = 8, phi: float = 0.25) -> Bloq:
-        return _build_qpe(m=int(m), phi=float(phi))
+    def build_bloq(
+        self,
+        *,
+        m: int = 8,
+        phi: float = 0.25,
+        unitary: Bloq | None = None,
+    ) -> Bloq:
+        return _build_qpe(m=int(m), phi=float(phi), unitary=unitary)
 
     def logical_costs(self, bloq: Bloq) -> LogicalCosts:
         return extract_logical_costs(bloq)
@@ -67,9 +89,12 @@ class QPEBenchmark(Benchmark):
     def verify_small(self, *, m: int = 4, phi: float = 0.25) -> VerificationResult:
         """Verify QPE via Cirq simulation on the eigenstate |1⟩.
 
-        Uses exact phases (multiples of 1/2^m) so the QPE output is
-        deterministic. Checks that the most-probable measurement
-        outcome reconstructs the true phase.
+        Only exact phases (multiples of 1/2^m) are accepted for
+        deterministic verification.  For inexact phases, use the
+        benchmark ``run`` command instead.
+
+        Uses ``to_cirq_circuit_and_quregs()`` to identify registers
+        by name rather than relying on qubit sort order.
         """
         m = int(m)
         phi = float(phi)
@@ -80,55 +105,92 @@ class QPEBenchmark(Benchmark):
                 detail=f"m={m} too large for simulation (max {_MAX_VERIFY_M})",
             )
 
+        if not _is_exact_phase(phi, m):
+            return VerificationResult(
+                passed=False,
+                detail=(
+                    f"phi={phi} is not an exact multiple of 1/2^{m}; "
+                    f"verification requires exact phases for deterministic output"
+                ),
+            )
+
         bloq = self.build_bloq(m=m, phi=phi)
 
+        # Build circuit with register map
         try:
-            circuit = bloq.decompose_bloq().to_cirq_circuit()
+            cbloq = bloq.decompose_bloq()
+            circuit, quregs = cbloq.to_cirq_circuit_and_quregs()
         except Exception as exc:
             return VerificationResult(
                 passed=False, detail=f"Circuit construction failed: {exc}"
             )
 
-        qubits = sorted(circuit.all_qubits())
-
-        # Identify the target qubit by name. TextbookQPE names it 'q'
-        # (single-qubit unitary register). We need it at position LSB
-        # so that ``best >> 1`` extracts the QPE register correctly.
-        target_names = {q for q in qubits if str(q) == "q"}
-        if len(target_names) != 1 or qubits[-1] not in target_names:
+        # Identify registers from quregs map
+        # TextbookQPE signature: qpe_reg (m qubits) + unitary target reg.
+        # quregs maps register names to numpy arrays of cirq qubits.
+        try:
+            qpe_qubits = list(quregs["qpe_reg"].flat)
+        except KeyError:
             return VerificationResult(
                 passed=False,
                 detail=(
-                    "Cannot identify target qubit 'q' as LSB in sorted order; "
-                    "qubit naming may have changed in Qualtran. "
-                    f"Sorted qubits: {[str(q) for q in qubits]}"
+                    f"Cannot find 'qpe_reg' in circuit registers; "
+                    f"available: {list(quregs.keys())}"
                 ),
             )
 
-        # Initial state: qpe_reg = |0…0⟩, q = |1⟩ (eigenstate).
-        # Sorted order puts NamedQubit('q') last => LSB = 1.
+        # Target register: everything that is not qpe_reg.
+        all_qubits_set = set(circuit.all_qubits())
+        qpe_set = set(qpe_qubits)
+        target_qubits = sorted(all_qubits_set - qpe_set)
+
+        if not target_qubits:
+            return VerificationResult(
+                passed=False,
+                detail="No target qubits found outside qpe_reg",
+            )
+
+        # Build qubit order: qpe_reg first, then target
+        # This way the top bits of the state vector index are the QPE
+        # register and the bottom bits are the target.
+        qubit_order = qpe_qubits + target_qubits
+        n_target = len(target_qubits)
+
+        # Prepare initial state
+        # QPE register: |0…0⟩, target: |1⟩ (eigenstate of ZPowGate).
+        # With our qubit order, target is in the lowest bits.
+        initial_state = 1  # |0…0⟩|1⟩
+
+        # Simulate
         sim = cirq.Simulator()
-        result = sim.simulate(circuit, initial_state=1, qubit_order=qubits)
+        result = sim.simulate(
+            circuit, initial_state=initial_state, qubit_order=qubit_order
+        )
         probs = np.abs(result.final_state_vector) ** 2
         best = int(np.argmax(probs))
 
-        # Extract the QPE register (all bits except q which is the LSB).
-        qpe_val = best >> 1
+        # Extract QPE register value
+        # State index layout: [qpe_reg bits | target bits]
+        qpe_val = best >> n_target
         estimated_phi = qpe_val / (1 << m)
 
-        if not np.isclose(estimated_phi, phi, atol=1.0 / (1 << m)):
+        expected_val = round(phi * (1 << m))
+        expected_phi = expected_val / (1 << m)
+
+        if qpe_val != expected_val:
             return VerificationResult(
                 passed=False,
                 detail=(
-                    f"Phase mismatch: estimated={estimated_phi:.6f} "
-                    f"true={phi:.6f} (prob={probs[best]:.4f})"
+                    f"Phase mismatch: measured QPE register={qpe_val} "
+                    f"(phi={estimated_phi:.6f}), expected={expected_val} "
+                    f"(phi={expected_phi:.6f}), prob={probs[best]:.4f}"
                 ),
             )
 
         return VerificationResult(
             passed=True,
             detail=(
-                f"QPE(m={m}, phi={phi}): estimated={estimated_phi:.6f} "
-                f"prob={probs[best]:.4f}"
+                f"QPE(m={m}, phi={phi}): register={qpe_val}, "
+                f"estimated_phi={estimated_phi:.6f}, prob={probs[best]:.4f}"
             ),
         )
