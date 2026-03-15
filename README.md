@@ -6,28 +6,7 @@
 Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq) with native [QREF](https://github.com/PsiQ/qref) / [Bartiq](https://github.com/PsiQ/bartiq) export.
 
 > [!NOTE]
-> Learning project — built to deepen hands-on understanding of FTQC resource estimation, Qualtran's bloq abstractions, and the QREF/Bartiq toolchain.
-
-> [!IMPORTANT]
-> Project is under active development.
->
-> ### What works
-> - [x] Project scaffold, CLI skeleton, benchmark protocol & registry
->
-> ### In progress
-> - [ ] Arithmetic benchmark (Add, OutOfPlaceAdder, LessThanEqual, Multiplier, ModAdd)
-> - [ ] QFT benchmark (Textbook + Approximate) — `build_bloq` / `logical_costs` / `verify_small`
-> - [ ] QPE benchmark (Textbook, pluggable U)
-> - [ ] QROM benchmark (QROM + SelectSwapQROM, T vs ancille trade-off)
-> - [ ] Logical resource extraction (`get_cost_value` + `QECGatesCost`)
-> - [ ] QREF export + Bartiq cost compilation
->
-> ### Planned
-> - [ ] Physical cost estimation (surface code model via `PhysicalCostModel`)
-> - [ ] Cirq small-scale verification for all primitives
-> - [ ] Parameter sweep experiments + plots (T-count vs n, qubits vs n)
-> - [ ] Call-graph SVG artifacts
-
+> Learning project - built to deepen hands-on understanding of FTQC resource estimation, Qualtran's bloq abstractions, and the QREF/Bartiq toolchain. Simplifications and approximations often appear in the design.
 
 ## What it does
 
@@ -37,28 +16,96 @@ Benchmark canonical FTQC building blocks, extract logical & physical resource co
 
 | Primitive | Variants | Key metric |
 |-----------|----------|------------|
-| **Arithmetic** | Add, OutOfPlaceAdder, LessThanEqual, Multiplier, ModAdd | T-count vs bitsize |
-| **QFT** | Textbook, Approximate | T-count vs n |
-| **QPE** | Textbook (pluggable U, QFT⁻¹) | T-count vs precision bits |
-| **QROM** | QROM, SelectSwapQROM | T-count vs table size, T/ancille trade-off |
+| **QFT** | Textbook, Approximate | T-count vs n (incl. rotation synthesis) |
+| **QPE** | Textbook (pluggable U) | T-count vs precision bits |
+| **Arithmetic** | Add, OutOfPlaceAdder, LessThanEqual, Product, ModAdd | T-count vs bitsize |
+| **QROM** | QROM, SelectSwapQROM | T-count vs table size, T/ancilla Pareto |
 
-## Quick start
+## Installation
+
+Requires Python 3.10–3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+git clone https://github.com/m2papierz/ftprims.git && cd ftprims
 uv sync
+```
 
-# run a benchmark
+## Usage
+
+### Run a benchmark
+
+```bash
+# Logical costs only
 uv run ftprims run qft -p n=32
 
-# verify (small-scale Cirq simulation)
-uv run ftprims verify qft -p n=4
+# Include surface-code physical estimate
+uv run ftprims run qft -p n=32 --physical
 
-# export to QREF
+# Arithmetic
+uv run ftprims run arithmetic -p n=64 -p op=mul
+
+# QROM with SelectSwap trade-off
+uv run ftprims run qrom -p data_size=256 -p variant=selectswap -p log_block_sizes=4
+
+# Save results to JSON
+uv run ftprims run qft -p n=32 --physical --out results/qft_n32.json
+```
+
+### Verify (small-scale Cirq simulation)
+
+```bash
+uv run ftprims verify qft -p n=4
+uv run ftprims verify qpe -p m=4 -p phi=0.25
+uv run ftprims verify arithmetic -p n=4 -p op=add
+uv run ftprims verify qrom -p data_size=8
+```
+
+### Export to QREF / Bartiq
+
+```bash
+# Numeric export (concrete values)
 uv run ftprims export-qref qft -p n=32 --out results/qft.qref.yaml
 
-# compile costs with Bartiq
-uv run ftprims bartiq results/qft.qref.yaml --assign n=64
+# Symbolic export (expressions for Bartiq compilation)
+uv run ftprims export-qref qft -p n=32 --symbolic --out results/qft_sym.qref.yaml
+
+# Compile and evaluate with Bartiq
+uv run ftprims bartiq results/qft_sym.qref.yaml --assign n=64
 ```
+
+### Parameter sweep experiments
+
+```bash
+uv run python experiments/sweep_qft.py
+uv run python experiments/sweep_qpe.py
+uv run python experiments/sweep_arithmetic.py
+uv run python experiments/sweep_qrom.py
+```
+
+Each sweep writes CSV data and PNG charts to `results/`.
+
+### Configuration
+
+```bash
+# Print default config
+uv run ftprims dump-config
+
+# Save and edit
+uv run ftprims dump-config --out config.yaml
+# then pass to any command:
+uv run ftprims run qft -p n=32 --physical --config config.yaml
+```
+
+Key config options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget`, `physical_error`, `cycle_time_us`.
+
+## Output format
+
+Logical costs report two T-count metrics:
+
+- **`t_count_direct`** — raw T-gates + 4×CCZ/And. Accurate for pure Clifford+T circuits.
+- **`t_count_ftqc`** — includes rotation synthesis cost (Ross-Selinger model, configurable ε). This is the primary FTQC metric.
+
+Physical estimates include `failure_prob` and `budget_satisfied` — the model never silently masks an unmet error budget.
 
 ## License
 

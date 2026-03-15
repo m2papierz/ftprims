@@ -15,30 +15,29 @@ import matplotlib.pyplot as plt
 from ftprims.algorithms import registry
 
 
-def main() -> None:
-    bench = registry["qft"]
-    bitsizes = [4, 8, 16, 32, 64, 128]
-    variants = ["textbook", "approx"]
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+BITSIZES = [4, 8, 16, 32, 64, 128]
+VARIANTS = ["textbook", "approx"]
 
+
+def collect(bench) -> list[dict]:
     rows: list[dict] = []
-    for n in bitsizes:
-        for variant in variants:
+    for n in BITSIZES:
+        for variant in VARIANTS:
             bloq = bench.build_bloq(n=n, variant=variant)
             costs = bench.logical_costs(bloq)
-            row = {
-                "n": n,
-                "variant": variant,
-                "logical_qubits_estimate": costs.qubits,
-                "t_count_direct": costs.t_count_direct,
-                "t_count_ftqc": costs.t_count_ftqc,
-                "raw_t": costs.raw_t,
-                "ccz_count": costs.ccz_count,
-                "clifford_count": costs.clifford_count,
-                "rotation_count": costs.rotation_count,
-            }
-            rows.append(row)
+            rows.append(
+                {
+                    "n": n,
+                    "variant": variant,
+                    "logical_qubits_estimate": costs.qubits,
+                    "t_count_direct": costs.t_count_direct,
+                    "t_count_ftqc": costs.t_count_ftqc,
+                    "raw_t": costs.raw_t,
+                    "ccz_count": costs.ccz_count,
+                    "clifford_count": costs.clifford_count,
+                    "rotation_count": costs.rotation_count,
+                }
+            )
             print(
                 f"n={n:4d}  {variant:10s}  "
                 f"T_direct={costs.t_count_direct:>8,}  "
@@ -46,16 +45,18 @@ def main() -> None:
                 f"rot={costs.rotation_count}  "
                 f"q={costs.qubits}"
             )
+    return rows
 
-    # ── CSV ──────────────────────────────────────────────────────────
-    csv_path = out_dir / "sweep_qft.csv"
-    with open(csv_path, "w", newline="") as f:
+
+def save_csv(rows: list[dict], path: Path) -> None:
+    with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nSaved {csv_path}")
+    print(f"Saved {path}")
 
-    # ── Chart: T-count scaling ───────────────────────────────────────
+
+def plot_scaling(rows: list[dict], path: Path) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     for variant, color, marker in [
@@ -78,7 +79,7 @@ def main() -> None:
     # Savings ratio
     tb = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "textbook"}
     ap = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "approx"}
-    ns_ratio = [n for n in sorted(tb.keys()) if ap[n] > 0]
+    ns_ratio = [n for n in sorted(tb) if ap[n] > 0]
     ratios = [tb[n] / ap[n] for n in ns_ratio]
 
     ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
@@ -98,9 +99,17 @@ def main() -> None:
         )
 
     plt.tight_layout()
-    chart_path = out_dir / "chart_qft_scaling.png"
-    plt.savefig(chart_path, dpi=150, bbox_inches="tight")
-    print(f"Saved {chart_path}")
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    print(f"Saved {path}")
+
+
+def main() -> None:
+    out_dir = Path("results")
+    out_dir.mkdir(exist_ok=True)
+
+    rows = collect(registry["qft"])
+    save_csv(rows, out_dir / "sweep_qft.csv")
+    plot_scaling(rows, out_dir / "chart_qft_scaling.png")
 
 
 if __name__ == "__main__":

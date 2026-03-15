@@ -1,4 +1,4 @@
-"""Sweep QPE precision: m => T-count, qubits.
+"""Sweep QPE precision: m → T-count, qubits.
 
 Outputs:
   results/sweep_qpe.csv
@@ -15,43 +15,44 @@ import matplotlib.pyplot as plt
 from ftprims.algorithms import registry
 
 
-def main() -> None:
-    bench = registry["qpe"]
-    precisions = [4, 6, 8, 10, 12]
-    phi = 0.25
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+PRECISIONS = [4, 6, 8, 10, 12]
+PHI = 0.25
 
+
+def collect(bench) -> list[dict]:
     rows: list[dict] = []
-    for m in precisions:
-        bloq = bench.build_bloq(m=m, phi=phi)
+    for m in PRECISIONS:
+        bloq = bench.build_bloq(m=m, phi=PHI)
         costs = bench.logical_costs(bloq)
-        row = {
-            "m": m,
-            "phi": phi,
-            "logical_qubits_estimate": costs.qubits,
-            "t_count_direct": costs.t_count_direct,
-            "t_count_ftqc": costs.t_count_ftqc,
-            "raw_t": costs.raw_t,
-            "ccz_count": costs.ccz_count,
-            "clifford_count": costs.clifford_count,
-            "rotation_count": costs.rotation_count,
-        }
-        rows.append(row)
+        rows.append(
+            {
+                "m": m,
+                "phi": PHI,
+                "logical_qubits_estimate": costs.qubits,
+                "t_count_direct": costs.t_count_direct,
+                "t_count_ftqc": costs.t_count_ftqc,
+                "raw_t": costs.raw_t,
+                "ccz_count": costs.ccz_count,
+                "clifford_count": costs.clifford_count,
+                "rotation_count": costs.rotation_count,
+            }
+        )
         print(
             f"m={m:3d}  T_ftqc={costs.t_count_ftqc:>8,}  "
             f"q={costs.qubits}  rot={costs.rotation_count}"
         )
+    return rows
 
-    # ── CSV ──────────────────────────────────────────────────────────
-    csv_path = out_dir / "sweep_qpe.csv"
-    with open(csv_path, "w", newline="") as f:
+
+def save_csv(rows: list[dict], path: Path) -> None:
+    with open(path, "w", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=rows[0].keys())
         writer.writeheader()
         writer.writerows(rows)
-    print(f"\nSaved {csv_path}")
+    print(f"Saved {path}")
 
-    # ── Chart ────────────────────────────────────────────────────────
+
+def plot_scaling(rows: list[dict], path: Path) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     ms = [r["m"] for r in rows]
@@ -71,9 +72,17 @@ def main() -> None:
     ax2.grid(True, alpha=0.3)
 
     plt.tight_layout()
-    chart_path = out_dir / "chart_qpe_scaling.png"
-    plt.savefig(chart_path, dpi=150, bbox_inches="tight")
-    print(f"Saved {chart_path}")
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    print(f"Saved {path}")
+
+
+def main() -> None:
+    out_dir = Path("results")
+    out_dir.mkdir(exist_ok=True)
+
+    rows = collect(registry["qpe"])
+    save_csv(rows, out_dir / "sweep_qpe.csv")
+    plot_scaling(rows, out_dir / "chart_qpe_scaling.png")
 
 
 if __name__ == "__main__":
