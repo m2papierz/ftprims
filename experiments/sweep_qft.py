@@ -1,0 +1,99 @@
+"""Sweep QFT parameters: n x variant → T-count, qubits, cost breakdown.
+
+Outputs:
+  results/sweep_qft.csv
+  results/chart_qft_scaling.png
+"""
+
+from __future__ import annotations
+
+import csv
+import sys
+from pathlib import Path
+
+import matplotlib.pyplot as plt
+
+from ftprims.algorithms._base import registry
+
+
+def main() -> None:
+    bench = registry["qft"]
+    bitsizes = [4, 8, 16, 32, 64, 128]
+    variants = ["textbook", "approx"]
+    out_dir = Path("results")
+    out_dir.mkdir(exist_ok=True)
+
+    rows: list[dict] = []
+    for n in bitsizes:
+        for variant in variants:
+            bloq = bench.build_bloq(n=n, variant=variant)
+            costs = bench.logical_costs(bloq)
+            row = {
+                "n": n,
+                "variant": variant,
+                "qubits": costs.qubits,
+                "t_count": costs.t_count,
+                "clifford_count": costs.clifford_count,
+                "rotation_count": costs.rotation_count,
+            }
+            rows.append(row)
+            print(f"n={n:4d}  {variant:10s}  T={costs.t_count:>8,}  q={costs.qubits}")
+
+    # ── CSV ──────────────────────────────────────────────────────────
+    csv_path = out_dir / "sweep_qft.csv"
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=rows[0].keys())
+        writer.writeheader()
+        writer.writerows(rows)
+    print(f"\nSaved {csv_path}")
+
+    # ── Chart: T-count scaling ───────────────────────────────────────
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    for variant, color, marker in [
+        ("textbook", "#e74c3c", "o"),
+        ("approx", "#3498db", "s"),
+    ]:
+        subset = [r for r in rows if r["variant"] == variant]
+        ns = [r["n"] for r in subset]
+        ts = [r["t_count"] for r in subset]
+        ax1.semilogy(
+            ns, ts, f"{marker}-", color=color, linewidth=2, markersize=8, label=variant
+        )
+
+    ax1.set_xlabel("Bitsize (n)")
+    ax1.set_ylabel("T-equivalent count")
+    ax1.set_title("QFT: Non-Clifford Cost Scaling")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3, which="both")
+
+    # Savings ratio (skip points where approx T-count is zero)
+    tb = {r["n"]: r["t_count"] for r in rows if r["variant"] == "textbook"}
+    ap = {r["n"]: r["t_count"] for r in rows if r["variant"] == "approx"}
+    ns_ratio = [n for n in sorted(tb.keys()) if ap[n] > 0]
+    ratios = [tb[n] / ap[n] for n in ns_ratio]
+
+    ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
+    ax2.axhline(y=1, color="gray", linestyle="--", alpha=0.5)
+    ax2.set_xlabel("Bitsize (n)")
+    ax2.set_ylabel("Textbook / Approximate")
+    ax2.set_title("T-equivalent Savings from Approximation")
+    ax2.grid(True, alpha=0.3)
+
+    for x, y in zip(ns_ratio, ratios):
+        ax2.annotate(
+            f"{y:.1f}×",
+            (x, y),
+            textcoords="offset points",
+            xytext=(0, -16),
+            ha="center",
+        )
+
+    plt.tight_layout()
+    chart_path = out_dir / "chart_qft_scaling.png"
+    plt.savefig(chart_path, dpi=150, bbox_inches="tight")
+    print(f"Saved {chart_path}")
+
+
+if __name__ == "__main__":
+    main()
