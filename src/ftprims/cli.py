@@ -1,4 +1,4 @@
-"""ftprims CLI — run benchmarks, sweep parameters, export QREF."""
+"""ftprims CLI — run benchmarks, verify, export QREF, compile with Bartiq."""
 
 from __future__ import annotations
 
@@ -22,11 +22,16 @@ def main() -> None:
 @click.option(
     "--out", type=click.Path(), default=None, help="Save JSON results to file"
 )
-@click.option("--svg", type=click.Path(), default=None, help="Save call-graph SVG")
+@click.option("--physical", is_flag=True, help="Include surface-code physical estimate")
 def run(
-    primitive: str, param: tuple[str, ...], out: str | None, svg: str | None
+    primitive: str,
+    param: tuple[str, ...],
+    out: str | None,
+    physical: bool,
 ) -> None:
     """Run a single benchmark and report resource costs."""
+    from ftprims.resource import estimate_physical
+
     bench = registry[primitive]
     params = _parse_params(param)
     click.echo(f"Building {primitive} with {params}")
@@ -34,7 +39,7 @@ def run(
     bloq = bench.build_bloq(**params)
     costs = bench.logical_costs(bloq)
 
-    result = {
+    result: dict = {
         "primitive": primitive,
         "params": params,
         "logical": {
@@ -44,6 +49,16 @@ def run(
             "rotation_count": costs.rotation_count,
         },
     }
+
+    if physical:
+        phys = estimate_physical(costs)
+        result["physical"] = {
+            "physical_qubits": phys.physical_qubits,
+            "wall_time_us": phys.wall_time_us,
+            "code_distance": phys.code_distance,
+            "error_budget": phys.error_budget,
+        }
+
     click.echo(json.dumps(result, indent=2))
 
     if out:
@@ -88,6 +103,33 @@ def export_qref(primitive: str, param: tuple[str, ...], out: str) -> None:
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     save_qref(program, out)
     click.echo(f"QREF exported → {out}")
+
+
+@main.command()
+@click.argument("qref_yaml", type=click.Path(exists=True))
+@click.option("--assign", "-a", multiple=True, help="key=value assignments for Bartiq")
+def bartiq(qref_yaml: str, assign: tuple[str, ...]) -> None:
+    """Compile a QREF YAML with Bartiq and evaluate resource expressions."""
+    import yaml
+    from bartiq import compile_routine, evaluate
+    from qref import SchemaV1
+
+    with open(qref_yaml) as f:
+        raw = yaml.safe_load(f)
+
+    schema = SchemaV1(**raw)
+    compiled = compile_routine(schema)
+
+    click.echo("Compiled resources (symbolic):")
+    for name, res in compiled.routine.resources.items():
+        click.echo(f"  {name} = {res.value}")
+
+    if assign:
+        assignments = {k: int(v) for k, v in (a.split("=") for a in assign)}
+        result = evaluate(compiled.routine, assignments=assignments)
+        click.echo(f"\nEvaluated with {assignments}:")
+        for name, res in result.routine.resources.items():
+            click.echo(f"  {name} = {res.value}")
 
 
 def _parse_params(raw: tuple[str, ...]) -> dict[str, int | float | str]:
