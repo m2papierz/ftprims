@@ -39,11 +39,20 @@ def main() -> None:
             row = {
                 "op": op,
                 "n": n,
-                "qubits": costs.qubits,
-                "t_count": costs.t_count,
+                "logical_qubits_estimate": costs.qubits,
+                "t_count_direct": costs.t_count_direct,
+                "t_count_ftqc": costs.t_count_ftqc,
+                "raw_t": costs.raw_t,
+                "ccz_count": costs.ccz_count,
+                "clifford_count": costs.clifford_count,
+                "rotation_count": costs.rotation_count,
             }
             rows.append(row)
-            print(f"{op:10s}  n={n:4d}  T={costs.t_count:>10,}  q={costs.qubits}")
+            print(
+                f"{op:10s}  n={n:4d}  "
+                f"T_ftqc={costs.t_count_ftqc:>10,}  "
+                f"q={costs.qubits}"
+            )
 
     # ── CSV ──────────────────────────────────────────────────────────
     csv_path = out_dir / "sweep_arithmetic.csv"
@@ -67,19 +76,19 @@ def main() -> None:
     for op in _BITSIZES:
         subset = [r for r in rows if r["op"] == op]
         ns = [r["n"] for r in subset]
-        ts = [r["t_count"] for r in subset]
-        qs = [r["qubits"] for r in subset]
+        ts = [r["t_count_ftqc"] for r in subset]
+        qs = [r["logical_qubits_estimate"] for r in subset]
         ax1.loglog(ns, ts, "o-", color=colors[op], linewidth=2, markersize=7, label=op)
         ax2.loglog(ns, qs, "o-", color=colors[op], linewidth=2, markersize=7, label=op)
 
     ax1.set_xlabel("Bitsize (n)")
-    ax1.set_ylabel("T-equivalent count")
+    ax1.set_ylabel("T-count (FTQC)")
     ax1.set_title("Arithmetic: T-gate Scaling")
     ax1.legend(fontsize=9)
     ax1.grid(True, alpha=0.3, which="both")
 
     ax2.set_xlabel("Bitsize (n)")
-    ax2.set_ylabel("Logical qubits")
+    ax2.set_ylabel("Logical qubits (estimate)")
     ax2.set_title("Arithmetic: Qubit Scaling")
     ax2.legend(fontsize=9)
     ax2.grid(True, alpha=0.3, which="both")

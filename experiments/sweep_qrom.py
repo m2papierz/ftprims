@@ -32,12 +32,19 @@ def main() -> None:
             row = {
                 "data_size": data_size,
                 "variant": variant,
-                "qubits": costs.qubits,
-                "t_count": costs.t_count,
+                "logical_qubits_estimate": costs.qubits,
+                "t_count_direct": costs.t_count_direct,
+                "t_count_ftqc": costs.t_count_ftqc,
+                "raw_t": costs.raw_t,
+                "ccz_count": costs.ccz_count,
+                "clifford_count": costs.clifford_count,
+                "rotation_count": costs.rotation_count,
             }
             rows.append(row)
             print(
-                f"N={data_size:5d}  {variant:12s}  T={costs.t_count:>8,}  q={costs.qubits}"
+                f"N={data_size:5d}  {variant:12s}  "
+                f"T_ftqc={costs.t_count_ftqc:>8,}  "
+                f"q={costs.qubits}"
             )
 
     csv_path = out_dir / "sweep_qrom.csv"
@@ -56,8 +63,8 @@ def main() -> None:
     ]:
         subset = [r for r in rows if r["variant"] == variant]
         ns = [r["data_size"] for r in subset]
-        ts = [r["t_count"] for r in subset]
-        qs = [r["qubits"] for r in subset]
+        ts = [r["t_count_ftqc"] for r in subset]
+        qs = [r["logical_qubits_estimate"] for r in subset]
         ax1.loglog(
             ns, ts, f"{marker}-", color=color, linewidth=2, markersize=8, label=variant
         )
@@ -66,13 +73,13 @@ def main() -> None:
         )
 
     ax1.set_xlabel("Data size (N)")
-    ax1.set_ylabel("T-equivalent count")
+    ax1.set_ylabel("T-count (FTQC)")
     ax1.set_title("QROM: T-gate Scaling")
     ax1.legend()
     ax1.grid(True, alpha=0.3, which="both")
 
     ax2.set_xlabel("Data size (N)")
-    ax2.set_ylabel("Logical qubits")
+    ax2.set_ylabel("Logical qubits (estimate)")
     ax2.set_title("QROM: Qubit Scaling")
     ax2.legend()
     ax2.grid(True, alpha=0.3, which="both")
@@ -93,12 +100,18 @@ def main() -> None:
             data_size=pareto_data_size, variant="selectswap", log_block_sizes=k
         )
         costs = bench.logical_costs(bloq)
-        pareto_rows.append({"k": k, "qubits": costs.qubits, "t_count": costs.t_count})
-        print(f"  k={k}  T={costs.t_count:>8,}  q={costs.qubits}")
+        pareto_rows.append(
+            {
+                "k": k,
+                "logical_qubits_estimate": costs.qubits,
+                "t_count_ftqc": costs.t_count_ftqc,
+            }
+        )
+        print(f"  k={k}  T_ftqc={costs.t_count_ftqc:>8,}  q={costs.qubits}")
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    qs = [r["qubits"] for r in pareto_rows]
-    ts = [r["t_count"] for r in pareto_rows]
+    qs = [r["logical_qubits_estimate"] for r in pareto_rows]
+    ts = [r["t_count_ftqc"] for r in pareto_rows]
     ks = [r["k"] for r in pareto_rows]
 
     ax.plot(qs, ts, "o-", color="#8e44ad", linewidth=2, markersize=10)
@@ -108,7 +121,7 @@ def main() -> None:
         )
 
     ax.set_xlabel("Logical qubits (ancilla)")
-    ax.set_ylabel("T-equivalent count")
+    ax.set_ylabel("T-count (FTQC)")
     ax.set_title(f"SelectSwapQROM Pareto: T-gates vs Qubits (N={pareto_data_size})")
     ax.grid(True, alpha=0.3)
 

@@ -29,13 +29,18 @@ def main() -> None:
         row = {
             "m": m,
             "phi": phi,
-            "qubits": costs.qubits,
-            "t_count": costs.t_count,
+            "logical_qubits_estimate": costs.qubits,
+            "t_count_direct": costs.t_count_direct,
+            "t_count_ftqc": costs.t_count_ftqc,
+            "raw_t": costs.raw_t,
+            "ccz_count": costs.ccz_count,
+            "clifford_count": costs.clifford_count,
             "rotation_count": costs.rotation_count,
         }
         rows.append(row)
         print(
-            f"m={m:3d}  T={costs.t_count:>8,}  q={costs.qubits}  rot={costs.rotation_count}"
+            f"m={m:3d}  T_ftqc={costs.t_count_ftqc:>8,}  "
+            f"q={costs.qubits}  rot={costs.rotation_count}"
         )
 
     # ── CSV ──────────────────────────────────────────────────────────
@@ -50,18 +55,18 @@ def main() -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
 
     ms = [r["m"] for r in rows]
-    ts = [r["t_count"] for r in rows]
-    qs = [r["qubits"] for r in rows]
+    ts = [r["t_count_ftqc"] for r in rows]
+    qs = [r["logical_qubits_estimate"] for r in rows]
 
     ax1.semilogy(ms, ts, "o-", color="#e74c3c", linewidth=2, markersize=8)
     ax1.set_xlabel("Precision bits (m)")
-    ax1.set_ylabel("T-equivalent count")
+    ax1.set_ylabel("T-count (FTQC, incl. rotation synthesis)")
     ax1.set_title("QPE: Non-Clifford Cost vs Precision")
     ax1.grid(True, alpha=0.3, which="both")
 
     ax2.plot(ms, qs, "s-", color="#3498db", linewidth=2, markersize=8)
     ax2.set_xlabel("Precision bits (m)")
-    ax2.set_ylabel("Logical qubits")
+    ax2.set_ylabel("Logical qubits (estimate)")
     ax2.set_title("QPE: Qubit Count vs Precision")
     ax2.grid(True, alpha=0.3)
 
