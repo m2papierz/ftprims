@@ -91,6 +91,20 @@ class QPEBenchmark(Benchmark):
 
         qubits = sorted(circuit.all_qubits())
 
+        # Identify the target qubit by name. TextbookQPE names it 'q'
+        # (single-qubit unitary register). We need it at position LSB
+        # so that ``best >> 1`` extracts the QPE register correctly.
+        target_names = {q for q in qubits if str(q) == "q"}
+        if len(target_names) != 1 or qubits[-1] not in target_names:
+            return VerificationResult(
+                passed=False,
+                detail=(
+                    "Cannot identify target qubit 'q' as LSB in sorted order; "
+                    "qubit naming may have changed in Qualtran. "
+                    f"Sorted qubits: {[str(q) for q in qubits]}"
+                ),
+            )
+
         # Initial state: qpe_reg = |0…0⟩, q = |1⟩ (eigenstate).
         # Sorted order puts NamedQubit('q') last => LSB = 1.
         sim = cirq.Simulator()

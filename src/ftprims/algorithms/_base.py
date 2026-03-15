@@ -14,6 +14,8 @@ class LogicalCosts:
 
     qubits: int
     t_count: int
+    raw_t: int = 0
+    ccz_count: int = 0
     clifford_count: int = 0
     rotation_count: int = 0
 

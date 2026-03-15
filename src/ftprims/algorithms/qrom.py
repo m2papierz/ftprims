@@ -138,7 +138,10 @@ class QROMBenchmark(Benchmark):
                     detail=f"call_classically(sel={sel}) failed: {exc}",
                 )
 
-            actual = int(result[1])
+            # Map positional results to register names for robustness.
+            reg_names = [reg.name for reg in bloq.signature]
+            result_dict = dict(zip(reg_names, result))
+            actual = int(result_dict["target0_"])
             if actual != data[sel]:
                 return VerificationResult(
                     passed=False,
