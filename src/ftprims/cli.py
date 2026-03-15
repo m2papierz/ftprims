@@ -73,6 +73,8 @@ def run(
             "wall_time_us": phys.wall_time_us,
             "code_distance": phys.code_distance,
             "error_budget": phys.error_budget,
+            "failure_prob": phys.failure_prob,
+            "budget_satisfied": phys.budget_satisfied,
         }
 
     click.echo(json.dumps(result, indent=2))

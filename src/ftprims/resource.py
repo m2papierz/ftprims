@@ -16,6 +16,7 @@ from ``LogicalCosts``.
 from __future__ import annotations
 
 import math
+import warnings
 
 from qualtran import Bloq
 from qualtran.resource_counting import (
@@ -78,7 +79,7 @@ def extract_logical_costs(
     gates = get_cost_value(bloq, QECGatesCost())
 
     raw_t = int(gates.t)
-    ccz_count = int(gates.and_bloq)  # And bloqs, each ~ 4 T
+    ccz_count = int(gates.and_bloq)
     rotation_count = int(gates.rotation)
     clifford_count = int(gates.clifford)
 
@@ -101,6 +102,11 @@ def extract_logical_costs(
         rotation_count=rotation_count,
         rotation_synthesis_epsilon=rotation_synthesis_epsilon,
     )
+
+
+# Maximum code distance for auto-search. Beyond this the surface-code
+# model is unrealistic and we report the best we found.
+_MAX_AUTO_DISTANCE = 99
 
 
 def _build_physical_model(
@@ -133,13 +139,17 @@ def _physical_from_model(
     model: PhysicalCostModel,
     summary: AlgorithmSummary,
     data_d: int,
-    error_budget: float,
+    cfg: SurfaceCodeConfig,
 ) -> PhysicalCosts:
+    """Build ``PhysicalCosts`` with the actual failure probability."""
+    failure_prob = model.error(summary)
     return PhysicalCosts(
         physical_qubits=model.n_phys_qubits(summary),
         wall_time_us=model.duration_hr(summary) * 3_600_000_000,
         code_distance=data_d,
-        error_budget=error_budget,
+        error_budget=cfg.error_budget,
+        failure_prob=failure_prob,
+        budget_satisfied=failure_prob <= cfg.error_budget,
     )
 
 
@@ -160,6 +170,14 @@ def estimate_physical(
         or *logical* must be given.
     cfg:
         Surface-code parameters.  Falls back to ``DEFAULT_CONFIG``.
+
+    Returns
+    -------
+    PhysicalCosts
+        Always includes ``failure_prob`` and ``budget_satisfied``.
+        When auto-search cannot find a distance that meets the error
+        budget, returns the best result at d=99 with
+        ``budget_satisfied=False`` and emits a warning.
     """
     if bloq is None and logical is None:
         raise ValueError("Provide at least one of bloq or logical")
@@ -179,20 +197,26 @@ def estimate_physical(
             n_logical_gates=summary_gate_counts(logical),
         )
 
-    # Fixed distance from config, or search for minimum.
+    # Fixed distance from config - report honestly whether it meets budget.
     if cfg.data_d is not None:
         model = _build_physical_model(cfg.data_d, cfg)
-        return _physical_from_model(model, summary, cfg.data_d, cfg.error_budget)
+        return _physical_from_model(model, summary, cfg.data_d, cfg)
 
-    # Auto-search: sweep odd distances until error <= budget.
-    for d in range(3, 100, 2):
+    # Auto-search: sweep odd distances until error ≤ budget.
+    for d in range(3, _MAX_AUTO_DISTANCE + 1, 2):
         model = _build_physical_model(d, cfg)
         if model.error(summary) <= cfg.error_budget:
-            return _physical_from_model(model, summary, d, cfg.error_budget)
+            return _physical_from_model(model, summary, d, cfg)
 
-    # Fallback at d=99 for extremely tight budgets.
-    model = _build_physical_model(99, cfg)
-    return _physical_from_model(model, summary, 99, cfg.error_budget)
+    # No feasible distance found = return best-effort with explicit warning.
+    warnings.warn(
+        f"Auto-search exhausted (d ≤ {_MAX_AUTO_DISTANCE}) without meeting "
+        f"error_budget={cfg.error_budget:.2e}. Returning result at "
+        f"d={_MAX_AUTO_DISTANCE} with budget_satisfied=False.",
+        stacklevel=2,
+    )
+    model = _build_physical_model(_MAX_AUTO_DISTANCE, cfg)
+    return _physical_from_model(model, summary, _MAX_AUTO_DISTANCE, cfg)
 
 
 def summary_gate_counts(logical: LogicalCosts):

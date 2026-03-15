@@ -29,7 +29,9 @@ class PhysicalCosts:
     physical_qubits: int
     wall_time_us: float
     code_distance: int
-    error_budget: float = 1e-3
+    error_budget: float
+    failure_prob: float
+    budget_satisfied: bool
 
 
 @attrs.define(frozen=True)
