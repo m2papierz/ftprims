@@ -1,9 +1,4 @@
-"""Centralised configuration for ftprims.
-
-All tuneable parameters — surface-code physical model, error budgets,
-QREF export defaults — live here so that CLI flags, experiments, and
-library callers share a single source of truth.
-"""
+"""Centralised configuration for ftprims."""
 
 from __future__ import annotations
 
@@ -32,6 +27,9 @@ class SurfaceCodeConfig:
 
     # Error budget for the whole algorithm
     error_budget: float = 1e-3
+
+    # Rotation synthesis precision
+    rotation_synthesis_epsilon: float | None = 1e-10
 
 
 @attrs.define

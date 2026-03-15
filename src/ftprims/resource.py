@@ -4,13 +4,18 @@ Logical costs are extracted from Qualtran's ``QECGatesCost``, keeping
 the raw-T / CCZ (And) breakdown so that downstream consumers get the
 correct separated values.
 
+The FTQC T-count additionally includes the cost of compiling arbitrary
+rotations via the Ross-Selinger (Gridsynth) model.
+
 Physical costs use the Gidney-Fowler surface-code model. When a Bloq
-is available the estimator calls ``AlgorithmSummary.from_bloq`;
+is available the estimator calls ``AlgorithmSummary.from_bloq``;
 otherwise it falls back to a manual ``AlgorithmSummary`` constructed
 from ``LogicalCosts``.
 """
 
 from __future__ import annotations
+
+import math
 
 from qualtran import Bloq
 from qualtran.resource_counting import (
@@ -31,26 +36,70 @@ from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 from ftprims.config import DEFAULT_CONFIG, SurfaceCodeConfig
 
 
-def extract_logical_costs(bloq: Bloq) -> LogicalCosts:
+# ── Rotation synthesis cost ──────────────────────────────────────────
+
+
+def rotation_synthesis_t_cost(epsilon: float) -> int:
+    """T-gates needed to synthesise one arbitrary rotation to precision *ε*.
+
+    Uses the Ross-Selinger / Gridsynth approximation:
+
+        T ≈ 1.149·log₂(1/ε) + 9.2
+
+    Returns 0 when *epsilon* is non-positive (meaning "skip synthesis").
+    """
+    if epsilon <= 0:
+        return 0
+    return math.ceil(1.149 * math.log2(1.0 / epsilon) + 9.2)
+
+
+def extract_logical_costs(
+    bloq: Bloq,
+    *,
+    rotation_synthesis_epsilon: float | None = None,
+) -> LogicalCosts:
     """Pull qubit count and gate costs from a Qualtran Bloq.
 
-    Stores the raw T-gate and CCZ/And counts separately so that
-    ``estimate_physical`` does not double-count.
+    Parameters
+    ----------
+    bloq:
+        The bloq to analyse.
+    rotation_synthesis_epsilon:
+        Precision for rotation synthesis.  When ``None`` the default
+        from ``DEFAULT_CONFIG`` is used.  Pass ``0`` or a negative
+        value to skip synthesis costing entirely.
     """
+    if rotation_synthesis_epsilon is None:
+        rotation_synthesis_epsilon = (
+            DEFAULT_CONFIG.surface_code.rotation_synthesis_epsilon
+        )
+
     qubits = get_cost_value(bloq, QubitCount())
     gates = get_cost_value(bloq, QECGatesCost())
 
     raw_t = int(gates.t)
-    ccz_count = int(gates.and_bloq)  # And bloqs, each ≈ 4 T
-    t_equiv = raw_t + 4 * ccz_count
+    ccz_count = int(gates.and_bloq)  # And bloqs, each ~ 4 T
+    rotation_count = int(gates.rotation)
+    clifford_count = int(gates.clifford)
+
+    t_count_direct = raw_t + 4 * ccz_count
+
+    # FTQC total: direct T-gates + synthesised rotations.
+    if rotation_synthesis_epsilon and rotation_count > 0:
+        t_per_rot = rotation_synthesis_t_cost(rotation_synthesis_epsilon)
+        t_count_ftqc = t_count_direct + rotation_count * t_per_rot
+    else:
+        t_count_ftqc = t_count_direct
 
     return LogicalCosts(
         qubits=int(qubits),
-        t_count=t_equiv,
+        t_count_direct=t_count_direct,
+        t_count_ftqc=t_count_ftqc,
         raw_t=raw_t,
         ccz_count=ccz_count,
-        clifford_count=int(gates.clifford),
-        rotation_count=int(gates.rotation),
+        clifford_count=clifford_count,
+        rotation_count=rotation_count,
+        rotation_synthesis_epsilon=rotation_synthesis_epsilon,
     )
 
 

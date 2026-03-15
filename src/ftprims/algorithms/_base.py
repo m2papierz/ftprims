@@ -13,11 +13,13 @@ class LogicalCosts:
     """Logical-level resource counts."""
 
     qubits: int
-    t_count: int
+    t_count_direct: int
+    t_count_ftqc: int
     raw_t: int = 0
     ccz_count: int = 0
     clifford_count: int = 0
     rotation_count: int = 0
+    rotation_synthesis_epsilon: float | None = None
 
 
 @attrs.define(frozen=True)

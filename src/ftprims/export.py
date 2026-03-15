@@ -61,7 +61,16 @@ def build_qref_program(
             "name": name,
             "ports": ports,
             "resources": [
-                {"name": "T_gates", "type": "additive", "value": costs.t_count},
+                {
+                    "name": "T_gates_ftqc",
+                    "type": "additive",
+                    "value": costs.t_count_ftqc,
+                },
+                {
+                    "name": "T_gates_direct",
+                    "type": "additive",
+                    "value": costs.t_count_direct,
+                },
                 {
                     "name": "rotations",
                     "type": "additive",

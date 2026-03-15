@@ -55,12 +55,14 @@ def run(
         "primitive": primitive,
         "params": params,
         "logical": {
-            "qubits": costs.qubits,
-            "t_count": costs.t_count,
+            "logical_qubits_estimate": costs.qubits,
+            "t_count_direct": costs.t_count_direct,
+            "t_count_ftqc": costs.t_count_ftqc,
             "raw_t": costs.raw_t,
             "ccz_count": costs.ccz_count,
             "clifford_count": costs.clifford_count,
             "rotation_count": costs.rotation_count,
+            "rotation_synthesis_epsilon": costs.rotation_synthesis_epsilon,
         },
     }
 
