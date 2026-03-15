@@ -97,7 +97,7 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
     click.echo(f"{status}  {result.detail}")
 
 
-# ── Port-size heuristic for QREF export ─────────────────────────────
+# Port-size heuristic for QREF export
 
 _PORT_SIZE_KEYS: dict[str, list[str]] = {
     "qft": ["n"],
@@ -121,35 +121,63 @@ def _infer_port_size(primitive: str, params: dict) -> int | None:
 @click.option("--param", "-p", multiple=True, help="key=value parameter pairs")
 @click.option("--out", type=click.Path(), required=True, help="Output YAML path")
 @click.option(
+    "--symbolic",
+    is_flag=True,
+    default=False,
+    help="Export symbolic expressions for Bartiq (instead of concrete values)",
+)
+@click.option(
     "--config", "config_path", type=click.Path(), default=None, help="Config YAML"
 )
 def export_qref(
     primitive: str,
     param: tuple[str, ...],
     out: str,
+    symbolic: bool,
     config_path: str | None,
 ) -> None:
-    """Export benchmark as a QREF v1 program."""
+    """Export benchmark as a QREF v1 program.
+
+    In numeric mode (default) concrete resource values are embedded.
+    In symbolic mode (--symbolic) resource expressions are written so
+    that ``ftprims bartiq`` can compile and evaluate them.
+    """
     from ftprims.export import build_qref_program, save_qref
 
     cfg = _load_config(config_path)
     bench = registry[primitive]
     params = _parse_params(param)
-    bloq = bench.build_bloq(**params)
-    costs = bench.logical_costs(bloq)
+
+    # In numeric mode we need to build the bloq to get costs.
+    # In symbolic mode costs are formula-based; we still need params for
+    # input_params list and port_size inference.
+    if symbolic:
+        from ftprims.algorithms._base import LogicalCosts
+
+        # Dummy costs — symbolic mode ignores them.
+        costs = LogicalCosts(
+            qubits=0,
+            t_count_direct=0,
+            t_count_ftqc=0,
+        )
+    else:
+        bloq = bench.build_bloq(**params)
+        costs = bench.logical_costs(bloq)
 
     port_size = _infer_port_size(primitive, params)
     program = build_qref_program(
         primitive,
         params,
         costs,
+        symbolic=symbolic,
         port_size=port_size,
         cfg=cfg.qref,
     )
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     save_qref(program, out)
-    click.echo(f"QREF exported → {out}")
+    mode = "symbolic" if symbolic else "numeric"
+    click.echo(f"QREF exported ({mode}) → {out}")
 
 
 @main.command()

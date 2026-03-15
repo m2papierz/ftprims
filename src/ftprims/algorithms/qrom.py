@@ -7,6 +7,8 @@ trades ancilla qubits for fewer T-gates, controlled by ``log_block_sizes``.
 
 from __future__ import annotations
 
+import math
+
 import numpy as np
 from qualtran import Bloq
 from qualtran.bloqs.data_loading.qrom import QROM
@@ -28,6 +30,10 @@ _MAX_VERIFY_DATA_SIZE = 32
 _RNG_SEED = 42
 
 
+def _is_power_of_two(n: int) -> bool:
+    return n >= 1 and (n & (n - 1)) == 0
+
+
 def _generate_data(data_size: int, target_bitsize: int) -> tuple[int, ...]:
     """Deterministic random lookup table fitting in *target_bitsize* bits."""
     rng = np.random.default_rng(_RNG_SEED)
@@ -46,14 +52,16 @@ def _build_qrom(
     Parameters
     ----------
     data_size:
-        Number of entries in the lookup table (must be ≥ 2).
+        Number of entries in the lookup table.  Must be ≥ 2 and a
+        power of two.
     target_bitsize:
         Bit-width of each output value.
     variant:
         ``"basic"`` for QROM or ``"selectswap"`` for SelectSwapQROM.
     log_block_sizes:
         Block-size exponent for SelectSwapQROM (controls the T-gates
-        vs ancilla trade-off).  Ignored for basic QROM.
+        vs ancilla trade-off). Must be in [1, log2(data_size) - 1].
+        Ignored for basic QROM.
     """
     if variant not in _VARIANTS:
         raise ValueError(
@@ -61,8 +69,19 @@ def _build_qrom(
         )
     if data_size < 2:
         raise ValueError(f"data_size must be ≥ 2, got {data_size}")
+    if not _is_power_of_two(data_size):
+        raise ValueError(f"data_size must be a power of two, got {data_size}")
     if target_bitsize < 1:
         raise ValueError(f"target_bitsize must be ≥ 1, got {target_bitsize}")
+
+    # Validate log_block_sizes range for SelectSwapQROM.
+    if variant == "selectswap" and log_block_sizes is not None:
+        sel_bits = int(math.log2(data_size))
+        if not (1 <= log_block_sizes < sel_bits):
+            raise ValueError(
+                f"log_block_sizes must be in [1, {sel_bits - 1}] for "
+                f"data_size={data_size}, got {log_block_sizes}"
+            )
 
     data = _generate_data(data_size, target_bitsize)
 
