@@ -30,6 +30,7 @@ __all__ = ["ArithmeticBenchmark"]
 _OPS = {"add", "add_oop", "leq", "mul", "modadd"}
 _MAX_VERIFY_N = 6
 _VERIFY_SAMPLES = 20
+_VERIFY_RNG_SEED = 0
 
 
 def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
@@ -42,8 +43,9 @@ def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
     op:
         One of ``add``, ``add_oop``, ``leq``, ``mul``, ``modadd``.
     mod:
-        Modulus for ``modadd`` (must be < 2**n).  Defaults to the
-        largest prime below 2**n.
+        Modulus for ``modadd`` (must be < 2**n). Defaults to the
+        largest prime below 2**n for n ≤ 32; for larger n uses
+        2**n - 1 to avoid expensive primality search.
     """
     if op not in _OPS:
         raise ValueError(f"Unknown op {op!r}; choose from {sorted(_OPS)}")
@@ -60,7 +62,10 @@ def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
         return Product(a_bitsize=n, b_bitsize=n)
     if op == "modadd":
         if mod is None:
-            mod = _largest_prime_below(1 << n)
+            if n <= 32:
+                mod = _largest_prime_below(1 << n)
+            else:
+                mod = (1 << n) - 1
         if mod < 2 or mod >= (1 << n):
             raise ValueError(f"mod={mod} out of range for bitsize {n}")
         return ModAdd(bitsize=n, mod=mod)
@@ -75,8 +80,6 @@ def _largest_prime_below(limit: int) -> int:
             return candidate
     return 2
 
-
-# ── Classical verification oracles ───────────────────────────────────────
 
 _ClassicalOracle = Callable[[int, int, int], tuple[dict[str, int], dict[str, int]]]
 
@@ -142,10 +145,11 @@ def _verify_classically(
 ) -> VerificationResult:
     """Run random classical test vectors through ``call_classically``."""
     bound = 1 << n
+    rng = random.Random(_VERIFY_RNG_SEED)
 
     for _ in range(_VERIFY_SAMPLES):
-        a = random.randint(0, bound - 1)
-        b = random.randint(0, bound - 1)
+        a = rng.randint(0, bound - 1)
+        b = rng.randint(0, bound - 1)
         if mod:
             a, b = a % mod, b % mod
 

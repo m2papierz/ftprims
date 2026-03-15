@@ -8,12 +8,11 @@ Outputs:
 from __future__ import annotations
 
 import csv
-import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from ftprims.algorithms._base import registry
+from ftprims.algorithms import registry
 
 
 def main() -> None:
