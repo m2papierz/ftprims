@@ -1,4 +1,4 @@
-"""Resource estimation — logical & physical layers.
+"""Resource estimation — logical costs and physical delegation.
 
 Logical costs are extracted from Qualtran's ``QECGatesCost``, keeping
 the raw-T / CCZ (And) breakdown so that downstream consumers get the
@@ -7,16 +7,12 @@ correct separated values.
 The FTQC T-count additionally includes the cost of compiling arbitrary
 rotations via the Ross-Selinger (Gridsynth) model.
 
-Physical costs use the Gidney-Fowler surface-code model. When a Bloq
-is available the estimator calls ``AlgorithmSummary.from_bloq``;
-otherwise it falls back to a manual ``AlgorithmSummary`` constructed
-from ``LogicalCosts``.
+Physical estimation is delegated to ``ftprims.physical``.
 """
 
 from __future__ import annotations
 
 import math
-import warnings
 
 from qualtran import Bloq
 from qualtran.resource_counting import (
@@ -24,20 +20,9 @@ from qualtran.resource_counting import (
     QubitCount,
     get_cost_value,
 )
-from qualtran.surface_code import (
-    AlgorithmSummary,
-    CCZ2TFactory,
-    PhysicalCostModel,
-    PhysicalParameters,
-    QECScheme,
-    SimpleDataBlock,
-)
 
 from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 from ftprims.config import DEFAULT_CONFIG, SurfaceCodeConfig
-
-
-# ── Rotation synthesis cost ──────────────────────────────────────────
 
 
 def rotation_synthesis_t_cost(epsilon: float) -> int:
@@ -104,55 +89,6 @@ def extract_logical_costs(
     )
 
 
-# Maximum code distance for auto-search. Beyond this the surface-code
-# model is unrealistic and we report the best we found.
-_MAX_AUTO_DISTANCE = 99
-
-
-def _build_physical_model(
-    data_d: int,
-    cfg: SurfaceCodeConfig,
-) -> PhysicalCostModel:
-    """Construct an explicit ``PhysicalCostModel`` from config parameters.
-
-    Mirrors the reference notebook construction instead of relying on
-    ``make_gidney_fowler`` (whose hidden defaults may diverge).
-    """
-    return PhysicalCostModel(
-        physical_params=PhysicalParameters(
-            physical_error=cfg.physical_error,
-            cycle_time_us=cfg.cycle_time_us,
-        ),
-        data_block=SimpleDataBlock(
-            data_d=data_d,
-            routing_overhead=cfg.routing_overhead,
-        ),
-        factory=CCZ2TFactory(),
-        qec_scheme=QECScheme(
-            error_rate_scaler=cfg.error_rate_scaler,
-            error_rate_threshold=cfg.error_rate_threshold,
-        ),
-    )
-
-
-def _physical_from_model(
-    model: PhysicalCostModel,
-    summary: AlgorithmSummary,
-    data_d: int,
-    cfg: SurfaceCodeConfig,
-) -> PhysicalCosts:
-    """Build ``PhysicalCosts`` with the actual failure probability."""
-    failure_prob = model.error(summary)
-    return PhysicalCosts(
-        physical_qubits=model.n_phys_qubits(summary),
-        wall_time_us=model.duration_hr(summary) * 3_600_000_000,
-        code_distance=data_d,
-        error_budget=cfg.error_budget,
-        failure_prob=failure_prob,
-        budget_satisfied=failure_prob <= cfg.error_budget,
-    )
-
-
 def estimate_physical(
     bloq: Bloq | None = None,
     logical: LogicalCosts | None = None,
@@ -161,70 +97,37 @@ def estimate_physical(
 ) -> PhysicalCosts:
     """Estimate physical costs using the surface-code model.
 
+    This is a backward-compatible wrapper.  For full control over
+    profile, data block, and factory variants, use
+    ``ftprims.physical.estimate_physical`` with a ``PhysicalModelSpec``.
+
     Parameters
     ----------
     bloq:
-        If provided, ``AlgorithmSummary.from_bloq`` is used.
+        If provided, logical costs are extracted first.
     logical:
-        Fallback when no *bloq* is available. At least one of *bloq*
-        or *logical* must be given.
+        Pre-computed logical costs. At least one of *bloq* or
+        *logical* must be given.
     cfg:
-        Surface-code parameters.  Falls back to ``DEFAULT_CONFIG``.
-
-    Returns
-    -------
-    PhysicalCosts
-        Always includes ``failure_prob`` and ``budget_satisfied``.
-        When auto-search cannot find a distance that meets the error
-        budget, returns the best result at d=99 with
-        ``budget_satisfied=False`` and emits a warning.
+        Legacy surface-code config. Falls back to ``DEFAULT_CONFIG``.
     """
+    from ftprims.physical import PhysicalModelSpec
+    from ftprims.physical import estimate_physical as _estimate
+
     if bloq is None and logical is None:
         raise ValueError("Provide at least one of bloq or logical")
 
+    if logical is None:
+        assert bloq is not None
+        logical = extract_logical_costs(bloq)
+
     cfg = cfg or DEFAULT_CONFIG.surface_code
 
-    # Build the AlgorithmSummary when a bloq is available;
-    # otherwise reconstruct manually.
-    if bloq is not None:
-        summary = AlgorithmSummary.from_bloq(bloq)
-    else:
-        assert logical is not None
-        summary = AlgorithmSummary(
-            n_algo_qubits=logical.logical_qubits_estimate,
-            # Pass separated counts - do NOT feed t_equivalent into
-            # GateCounts.t; that would double-count CCZ.
-            n_logical_gates=summary_gate_counts(logical),
-        )
-
-    # Fixed distance from config - report honestly whether it meets budget.
-    if cfg.data_d is not None:
-        model = _build_physical_model(cfg.data_d, cfg)
-        return _physical_from_model(model, summary, cfg.data_d, cfg)
-
-    # Auto-search: sweep odd distances until error ≤ budget.
-    for d in range(3, _MAX_AUTO_DISTANCE + 1, 2):
-        model = _build_physical_model(d, cfg)
-        if model.error(summary) <= cfg.error_budget:
-            return _physical_from_model(model, summary, d, cfg)
-
-    # No feasible distance found = return best-effort with explicit warning.
-    warnings.warn(
-        f"Auto-search exhausted (d ≤ {_MAX_AUTO_DISTANCE}) without meeting "
-        f"error_budget={cfg.error_budget:.2e}. Returning result at "
-        f"d={_MAX_AUTO_DISTANCE} with budget_satisfied=False.",
-        stacklevel=2,
+    spec = PhysicalModelSpec(
+        data_d=cfg.data_d,
+        error_budget=cfg.error_budget,
+        physical_error=cfg.physical_error,
+        cycle_time_us=cfg.cycle_time_us,
     )
-    model = _build_physical_model(_MAX_AUTO_DISTANCE, cfg)
-    return _physical_from_model(model, summary, _MAX_AUTO_DISTANCE, cfg)
 
-
-def summary_gate_counts(logical: LogicalCosts):
-    """Build a ``GateCounts`` from separated logical cost fields."""
-    from qualtran.resource_counting import GateCounts
-
-    return GateCounts(
-        t=logical.raw_t,
-        and_bloq=logical.ccz_count,
-        rotation=logical.rotation_count,
-    )
+    return _estimate(logical, spec=spec)
