@@ -1,12 +1,11 @@
 """QPE benchmark: Textbook Quantum Phase Estimation.
 
-The default unitary is ``ZPowGate(exponent=2·phi)`` - a toy single-qubit
-gate whose eigenstate |1⟩ has eigenvalue e^(2πi·phi).  The benchmark
+The default unitary is ``ZPowGate(exponent=2*phi)``. The benchmark
 layer accepts any single-qubit ``Bloq`` as ``unitary``, but the CLI
 preset uses ZPowGate.
 
-Verification enforces exact phases (phi = k/2^m) so that QPE output is
-deterministic and the check is bit-exact.  Register identification uses
+Verification enforces exact phases so that QPE output is deterministic
+and the check is bit-exact.  Register identification uses
 ``to_cirq_circuit_and_quregs()`` instead of fragile qubit-name heuristics.
 """
 
