@@ -56,42 +56,54 @@ _SymbolicEntry = dict[str, Any]  # keys: required_params, resources
 
 _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
     # -- QFT --
+    # The textbook QFT on n qubits has n(n-1)/2 controlled-rotation
+    # pairs.  Qualtran splits these into CCZ gates (T_gates_direct)
+    # and true rotations depending on the angle; the symbolic model
+    # counts them all as rotations (dominant FTQC cost after synthesis).
     ("qft", "textbook"): {
         "required_params": ["n"],
         "resources": {
             "T_gates_direct": "0",
             "rotations": "n*(n - 1)/2",
             "cliffords": "n*(n - 1)/2",
-            "n_qubits": "n",
+            "n_qubits": "n + 1",
         },
     },
+    # ApproximateQFT uses phase-gradient rotations with ancillae,
+    # converting most rotations to Clifford additions.  The qubit
+    # count is larger (ancilla registers) and the non-Clifford cost
+    # drops dramatically.  These formulas are rough upper bounds;
+    # Qualtran's implementation may differ significantly.
     ("qft", "approx"): {
         "required_params": ["n"],
         "resources": {
-            # ApproximateQFT with phase_bitsize = n//2 keeps only
-            # rotations with angle >= 2pi/2^(n//2), reducing count.
             "T_gates_direct": "0",
-            "rotations": "n*(n/2)/2",
-            "cliffords": "n*(n - 1)/2",
-            "n_qubits": "n",
+            "rotations": "0",
+            "cliffords": "n + n//2",
+            "n_qubits": "n + n//2",
         },
     },
     # -- QPE --
+    # TextbookQPE = inverse QFT on m-qubit register + m applications
+    # of controlled-U^(2^k).  The controlled-U cost is unitary-
+    # dependent and cannot be expressed symbolically without knowing
+    # the unitary.  These formulas cover only the inverse QFT part.
     ("qpe", "default"): {
         "required_params": ["m"],
         "resources": {
-            # Inverse QFT rotations + controlled-U applications.
             "T_gates_direct": "0",
-            "rotations": "m*(m - 1)/2 + (2**m - 1)",
+            "rotations": "m*(m - 1)/2",
             "cliffords": "m*(m - 1)/2",
-            "n_qubits": "m + 1",
+            "n_qubits": "m + 2",
         },
     },
     # -- Arithmetic --
+    # Qualtran's Add(n) uses n-1 And gates plus a few raw T-gates.
+    # Dominant term: 4*(n-1) T from And gates ≈ 4*n.
     ("arithmetic", "add"): {
         "required_params": ["n"],
         "resources": {
-            "T_gates_direct": "4*n",
+            "T_gates_direct": "4*(n - 1)",
             "rotations": "0",
             "cliffords": "8*n",
             "n_qubits": "2*n",
@@ -103,32 +115,33 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
             "T_gates_direct": "4*n",
             "rotations": "0",
             "cliffords": "8*n",
-            "n_qubits": "3*n",
+            "n_qubits": "3*n + 1",
         },
     },
     ("arithmetic", "leq"): {
         "required_params": ["n"],
         "resources": {
-            "T_gates_direct": "4*n",
+            "T_gates_direct": "4*(2*n - 1)",
             "rotations": "0",
             "cliffords": "8*n",
             "n_qubits": "2*n + 1",
         },
     },
+    # Product(n, n) decomposes into n*(2n-1) And gates via
+    # schoolbook multiplication.  T_direct = 4 * n*(2n-1).
     ("arithmetic", "mul"): {
         "required_params": ["n"],
         "resources": {
-            # Product decomposes into O(n) additions of n-bit numbers.
-            "T_gates_direct": "4*n**2",
+            "T_gates_direct": "4*n*(2*n - 1)",
             "rotations": "0",
-            "cliffords": "8*n**2",
+            "cliffords": "8*n*(2*n - 1)",
             "n_qubits": "4*n",
         },
     },
+    # ModAdd composes ~5 adders/comparators internally.
     ("arithmetic", "modadd"): {
         "required_params": ["n"],
         "resources": {
-            # ModAdd uses ~5 additions + comparisons internally.
             "T_gates_direct": "20*n",
             "rotations": "0",
             "cliffords": "40*n",
@@ -136,6 +149,8 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
         },
     },
     # -- QROM --
+    # Basic QROM uses data_size - 1 multi-controlled gates,
+    # each costing ~4 T-gates (one And gate).
     ("qrom", "basic"): {
         "required_params": ["data_size", "target_bitsize"],
         "resources": {
@@ -145,13 +160,14 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
             "n_qubits": "ceil(log2(data_size)) + target_bitsize",
         },
     },
+    # SelectSwapQROM trades ancillae for fewer T-gates.  The cost
+    # depends on the block-size parameter k; at the default k≈log2(√N)
+    # the T-count scales as O(√N · target_bitsize).  This formula
+    # captures the asymptotic trend but may diverge at small N.
     ("qrom", "selectswap"): {
         "required_params": ["data_size", "target_bitsize"],
         "resources": {
-            # SelectSwap reduces T-count at the expense of more ancillae.
-            # Exact formula depends on log_block_sizes; this is the
-            # dominant scaling term.
-            "T_gates_direct": "4*ceil(sqrt(data_size))",
+            "T_gates_direct": "4*ceil(sqrt(data_size))*target_bitsize",
             "rotations": "0",
             "cliffords": "4*data_size",
             "n_qubits": "ceil(log2(data_size)) + 2*target_bitsize",
