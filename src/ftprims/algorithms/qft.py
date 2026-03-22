@@ -88,7 +88,7 @@ class QFTBenchmark(Benchmark):
         n = int(n)
         if n > _MAX_VERIFY_N:
             return VerificationResult(
-                status="fail",
+                status="skip",
                 detail=f"n={n} too large for exact verification (max {_MAX_VERIFY_N})",
             )
 

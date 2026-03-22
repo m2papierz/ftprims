@@ -109,13 +109,13 @@ class QPEBenchmark(Benchmark):
 
         if m > _MAX_VERIFY_M:
             return VerificationResult(
-                status="fail",
+                status="skip",
                 detail=f"m={m} too large for simulation (max {_MAX_VERIFY_M})",
             )
 
         if not _is_exact_phase(phi, m):
             return VerificationResult(
-                status="fail",
+                status="skip",
                 detail=(
                     f"phi={phi} is not an exact multiple of 1/2^{m}; "
                     f"verification requires exact phases for deterministic output"

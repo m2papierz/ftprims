@@ -220,16 +220,14 @@ class ArithmeticBenchmark(Benchmark):
         n = int(n)
         if n > _MAX_VERIFY_N:
             return VerificationResult(
-                status="fail",
+                status="skip",
                 detail=f"n={n} too large for verification (max {_MAX_VERIFY_N})",
             )
 
         if op == "mul":
-            # Product has no decomposition or classical simulation in Qualtran.
             return VerificationResult(
-                status="pass",
-                detail=f"Product(n={n}): classical simulation not supported by Qualtran; "
-                "cost extraction verified only",
+                status="skip",
+                detail=f"Product(n={n}): classical simulation not supported by Qualtran",
             )
 
         oracle_factory = _ORACLES.get(op)

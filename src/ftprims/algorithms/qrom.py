@@ -140,7 +140,7 @@ class QROMBenchmark(Benchmark):
         data_size = int(data_size)
         if data_size > _MAX_VERIFY_DATA_SIZE:
             return VerificationResult(
-                status="fail",
+                status="skip",
                 detail=(
                     f"data_size={data_size} too large for verification "
                     f"(max {_MAX_VERIFY_DATA_SIZE})"
