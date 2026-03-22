@@ -11,19 +11,14 @@ import yaml
 
 @attrs.define
 class SurfaceCodeConfig:
-    """Parameters for the Gidney-Fowler surface-code physical cost model."""
+    """User-tunable parameters for surface-code physical estimation."""
 
-    # PhysicalParameters: None means "use QEC profile preset"
+    # PhysicalParameters - None means "use QEC profile preset"
     physical_error: float | None = None
     cycle_time_us: float | None = None
 
-    # QECScheme
-    error_rate_scaler: float = 0.03
-    error_rate_threshold: float = 0.01
-
-    # SimpleDataBlock
-    data_d: int | None = None  # None → auto-search for minimum distance
-    routing_overhead: float = 0.5
+    # Code distance - None => auto-search for minimum feasible distance
+    data_d: int | None = None
 
     # Error budget for the whole algorithm
     error_budget: float = 1e-3
