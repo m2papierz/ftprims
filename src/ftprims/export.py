@@ -6,13 +6,21 @@ See https://github.com/PsiQ/qref for the spec.
 Two export modes are supported:
 
 **Numeric** (default): exports a flat leaf routine with concrete resource
-values.  Useful for archiving results but Bartiq has nothing to compile.
+values extracted from a real Qualtran benchmark run. This is the
+authoritative cost source.
 
-**Symbolic**: exports resource expressions that depend on ``input_params``
-so that Bartiq can compile the routine and ``evaluate(...)`` can
-substitute concrete values.  Symbolic expressions are keyed by
-``(primitive, variant_or_op)`` so that different variants of the same
-primitive get appropriate formulas.
+**Symbolic** (``--symbolic``): exports **approximate analytic formulas**
+that depend on ``input_params`` so that Bartiq can compile and evaluate
+them.  These formulas are *textbook-level approximations* — they capture
+the dominant scaling term but may omit lower-order additive constants
+and do not reproduce the exact gate counts that Qualtran computes.
+
+.. warning::
+
+   Symbolic mode is **not** a faithful export of the numeric benchmark.
+   It is a separate, simplified analytic model intended for quick
+   asymptotic exploration with Bartiq.  Use ``export-qref --check`` to
+   compare the symbolic approximation against a real numeric run.
 
 Programs are validated through ``qref.SchemaV1`` before serialisation.
 """
@@ -29,17 +37,20 @@ from ftprims.config import DEFAULT_CONFIG, QREFConfig
 
 
 # ---------------------------------------------------------------------------
-# Symbolic cost formulas
+# Symbolic cost formulas — APPROXIMATE ANALYTIC MODEL
 # ---------------------------------------------------------------------------
-# Each key is ``(primitive, variant_or_op)`` - e.g. ``("qft", "textbook")``.
-# ``variant_or_op`` comes from params["variant"] or params["op"].
+# IMPORTANT: These are NOT derived from the Qualtran benchmark.  They are
+# hand-written textbook-level approximations that capture the dominant
+# asymptotic scaling term.  They may diverge from the numeric benchmark
+# at concrete parameter values, especially for small n or when Qualtran's
+# decomposition includes additive constants, ancilla management overhead,
+# or implementation-specific optimisations not reflected here.
 #
-# ``required_params`` lists the symbols the formulas reference. These are
-# injected into the QREF ``input_params`` regardless of what the user
-# passes on the CLI, so Bartiq can always resolve them.
+# Use ``check_symbolic_consistency()`` to compare these approximations
+# against the real numeric benchmark at any concrete parameter point.
 #
-# Formulas are textbook-level approximations - they capture the dominant
-# scaling term faithfully but may omit low-order additive constants.
+# Each key is ``(primitive, variant_or_op)`` — e.g. ``("qft", "textbook")``.
+# ``required_params`` lists the symbols the formulas reference.
 
 _SymbolicEntry = dict[str, Any]  # keys: required_params, resources
 
@@ -179,8 +190,9 @@ def build_qref_program(
     costs:
         Logical-level resource counts (used in numeric mode).
     symbolic:
-        When True, emit symbolic resource expressions suitable for
-        Bartiq compilation.  When False (default), emit concrete values.
+        When True, emit **approximate** symbolic resource expressions
+        suitable for Bartiq compilation.  These are textbook-level
+        formulas, not a faithful export of the numeric benchmark.
     children:
         Optional child routines for hierarchical programs.
     port_size:
@@ -218,9 +230,31 @@ def build_qref_program(
         },
     }
 
+    if symbolic:
+        program["_meta"] = {
+            "cost_model": "approximate_analytic",
+            "note": (
+                "Resource expressions are textbook-level approximations. "
+                "They capture dominant scaling but may diverge from the "
+                "numeric Qualtran benchmark at concrete parameter values. "
+                "Use 'ftprims export-qref --check' to compare."
+            ),
+        }
+
     if cfg.validate:
         schema = SchemaV1(**program)
         program = schema.model_dump()
+        # SchemaV1 strips unknown keys; re-attach _meta after validation.
+        if symbolic:
+            program["_meta"] = {
+                "cost_model": "approximate_analytic",
+                "note": (
+                    "Resource expressions are textbook-level approximations. "
+                    "They capture dominant scaling but may diverge from the "
+                    "numeric Qualtran benchmark at concrete parameter values. "
+                    "Use 'ftprims export-qref --check' to compare."
+                ),
+            }
 
     return program
 
@@ -253,6 +287,11 @@ def _build_symbolic_resources(
 
     Returns ``(resources_list, required_params)`` so the caller can
     merge required params into the program's ``input_params``.
+
+    .. note::
+
+       These are approximate analytic formulas, not a faithful
+       representation of the numeric benchmark.
     """
     entry = _SYMBOLIC_COSTS.get(key)
     if entry is None:
@@ -266,3 +305,80 @@ def _build_symbolic_resources(
         for name, expr in entry["resources"].items()
     ]
     return resources, list(entry["required_params"])
+
+
+def check_symbolic_consistency(
+    primitive: str,
+    params: dict[str, Any],
+    numeric_costs: LogicalCosts,
+) -> dict[str, Any]:
+    """Compare the symbolic approximation against a real numeric benchmark.
+
+    Returns a dict with:
+      - ``available``: whether symbolic formulas exist for this primitive/variant
+      - ``consistent``: True when every comparable field matches exactly
+      - ``comparisons``: per-resource ``{symbolic, numeric, match, relative_error}``
+
+    This lets users (and CI) verify how far the analytic model drifts
+    from the authoritative Qualtran numbers at concrete parameter values.
+    """
+    import math as _math
+
+    key = _resolve_variant_key(primitive, params)
+    entry = _SYMBOLIC_COSTS.get(key)
+    if entry is None:
+        return {
+            "available": False,
+            "reason": f"No symbolic formulas for {key[0]!r}/{key[1]!r}",
+        }
+
+    # Evaluate symbolic formulas with concrete parameter values.
+    safe_ns: dict[str, Any] = {
+        **{k: v for k, v in params.items() if isinstance(v, (int, float))},
+        "ceil": _math.ceil,
+        "log2": _math.log2,
+        "sqrt": _math.sqrt,
+    }
+
+    symbolic_vals: dict[str, int | str] = {}
+    for name, expr in entry["resources"].items():
+        try:
+            symbolic_vals[name] = int(
+                eval(expr, {"__builtins__": {}}, safe_ns)
+            )  # noqa: S307
+        except Exception as exc:
+            symbolic_vals[name] = f"eval error: {exc}"
+
+    numeric_vals: dict[str, int] = {
+        "T_gates_direct": numeric_costs.t_count_direct,
+        "rotations": numeric_costs.rotation_count,
+        "cliffords": numeric_costs.clifford_count,
+        "n_qubits": numeric_costs.logical_qubits_estimate,
+    }
+
+    comparisons: dict[str, dict[str, Any]] = {}
+    for field in sorted(set(symbolic_vals) | set(numeric_vals)):
+        s = symbolic_vals.get(field)
+        n = numeric_vals.get(field)
+        if isinstance(s, int) and isinstance(n, int):
+            rel_err = abs(s - n) / max(n, 1) if n else None
+            comparisons[field] = {
+                "symbolic": s,
+                "numeric": n,
+                "match": s == n,
+                "relative_error": round(rel_err, 4) if rel_err is not None else None,
+            }
+        else:
+            comparisons[field] = {"symbolic": s, "numeric": n, "match": None}
+
+    all_match = all(
+        c.get("match") is True
+        for c in comparisons.values()
+        if c.get("match") is not None
+    )
+
+    return {
+        "available": True,
+        "consistent": all_match,
+        "comparisons": comparisons,
+    }
