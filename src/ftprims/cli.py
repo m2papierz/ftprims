@@ -81,6 +81,8 @@ def main() -> None:
     show_default=True,
     help="Rotation synthesis",
 )
+@click.option("--explain", is_flag=True, help="Print interpretation after JSON output")
+@click.option("--explain-json", is_flag=True, help="Embed explanation in JSON output")
 @click.option(
     "--config", "config_path", type=click.Path(), default=None, help="Config YAML"
 )
@@ -99,6 +101,8 @@ def run(
     breakdown: bool,
     breakdown_depth: int,
     rotation_eps: float,
+    explain: bool,
+    explain_json: bool,
     config_path: str | None,
 ) -> None:
     """Run a single benchmark and report resource costs."""
@@ -125,6 +129,7 @@ def run(
         },
     }
 
+    breakdown_items: tuple = ()
     if breakdown:
         import attrs
 
@@ -135,9 +140,11 @@ def run(
             depth=breakdown_depth,
             rotation_eps=rotation_eps,
         )
+        breakdown_items = items
         result["breakdown"] = [attrs.asdict(item) for item in items]
         result["breakdown_summary"] = summarize_breakdown(items)
 
+    phys_result = None
     if physical:
         from ftprims.physical import PhysicalModelSpec
         from ftprims.physical import estimate_physical as phys_estimate
@@ -151,20 +158,39 @@ def run(
             physical_error=physical_error,
             cycle_time_us=cycle_time_us,
         )
-        phys = phys_estimate(costs, spec=spec)
+        phys_result = phys_estimate(costs, spec=spec)
         result["physical"] = {
-            "profile": phys.profile,
-            "data_block": phys.data_block,
-            "factory": phys.factory,
-            "physical_qubits": phys.physical_qubits,
-            "wall_time_us": phys.wall_time_us,
-            "code_distance": phys.code_distance,
-            "error_budget": phys.error_budget,
-            "failure_prob": phys.failure_prob,
-            "budget_satisfied": phys.budget_satisfied,
+            "profile": phys_result.profile,
+            "data_block": phys_result.data_block,
+            "factory": phys_result.factory,
+            "physical_qubits": phys_result.physical_qubits,
+            "wall_time_us": phys_result.wall_time_us,
+            "code_distance": phys_result.code_distance,
+            "error_budget": phys_result.error_budget,
+            "failure_prob": phys_result.failure_prob,
+            "budget_satisfied": phys_result.budget_satisfied,
         }
 
+    if explain or explain_json:
+        from ftprims.explain import explain_run
+
+        explanation = explain_run(
+            primitive,
+            params,
+            costs,
+            physical=phys_result,
+            breakdown=breakdown_items,
+        )
+        if explain_json:
+            result["explain"] = explanation
+
     click.echo(json.dumps(result, indent=2))
+
+    if explain and not explain_json:
+        click.echo()
+        click.echo(f"  {explanation['headline']}")
+        for obs in explanation["observations"]:
+            click.echo(f"  • {obs}")
 
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
