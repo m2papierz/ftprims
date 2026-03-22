@@ -10,8 +10,9 @@ values.  Useful for archiving results but Bartiq has nothing to compile.
 
 **Symbolic**: exports resource expressions that depend on ``input_params``
 so that Bartiq can compile the routine and ``evaluate(...)`` can
-substitute concrete values.  Symbolic expressions are derived from the
-known cost formulas for each primitive (e.g. QFT rotations ~ n(n-1)/2).
+substitute concrete values.  Symbolic expressions are keyed by
+``(primitive, variant_or_op)`` so that different variants of the same
+primitive get appropriate formulas.
 
 Programs are validated through ``qref.SchemaV1`` before serialisation.
 """
@@ -27,43 +28,134 @@ from ftprims.algorithms._base import LogicalCosts
 from ftprims.config import DEFAULT_CONFIG, QREFConfig
 
 
+# ---------------------------------------------------------------------------
 # Symbolic cost formulas
-# Each entry maps a primitive name to a dict of resource-name => SymPy
-# expression string using the primitive's input_params.
-# These are the textbook / Qualtran formulas.
+# ---------------------------------------------------------------------------
+# Each key is ``(primitive, variant_or_op)`` - e.g. ``("qft", "textbook")``.
+# ``variant_or_op`` comes from params["variant"] or params["op"].
+#
+# ``required_params`` lists the symbols the formulas reference. These are
+# injected into the QREF ``input_params`` regardless of what the user
+# passes on the CLI, so Bartiq can always resolve them.
+#
+# Formulas are textbook-level approximations - they capture the dominant
+# scaling term faithfully but may omit low-order additive constants.
 
-_SYMBOLIC_COSTS: dict[str, dict[str, str]] = {
-    "qft": {
-        # Textbook QFT: n(n-1)/2 rotations, each needing synthesis.
-        # Direct T from rotations = 0 (all cost is in rotation synthesis).
-        "T_gates_direct": "0",
-        "rotations": "n*(n - 1)/2",
-        "cliffords": "n*(n - 1)/2",
-        "n_qubits": "n",
+_SymbolicEntry = dict[str, Any]  # keys: required_params, resources
+
+_SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
+    # -- QFT --
+    ("qft", "textbook"): {
+        "required_params": ["n"],
+        "resources": {
+            "T_gates_direct": "0",
+            "rotations": "n*(n - 1)/2",
+            "cliffords": "n*(n - 1)/2",
+            "n_qubits": "n",
+        },
     },
-    "qpe": {
-        # QPE with m precision bits: 2^m - 1 controlled-U applications
-        # plus the inverse QFT on m qubits.
-        "T_gates_direct": "0",
-        "rotations": "m*(m - 1)/2 + (2**m - 1)",
-        "cliffords": "m*(m - 1)/2",
-        "n_qubits": "m + 1",
+    ("qft", "approx"): {
+        "required_params": ["n"],
+        "resources": {
+            # ApproximateQFT with phase_bitsize = n//2 keeps only
+            # rotations with angle >= 2pi/2^(n//2), reducing count.
+            "T_gates_direct": "0",
+            "rotations": "n*(n/2)/2",
+            "cliffords": "n*(n - 1)/2",
+            "n_qubits": "n",
+        },
     },
-    "arithmetic": {
-        # Add (in-place): ~4n T-gates, no rotations.
-        "T_gates_direct": "4*n",
-        "rotations": "0",
-        "cliffords": "8*n",
-        "n_qubits": "2*n",
+    # -- QPE --
+    ("qpe", "default"): {
+        "required_params": ["m"],
+        "resources": {
+            # Inverse QFT rotations + controlled-U applications.
+            "T_gates_direct": "0",
+            "rotations": "m*(m - 1)/2 + (2**m - 1)",
+            "cliffords": "m*(m - 1)/2",
+            "n_qubits": "m + 1",
+        },
     },
-    "qrom": {
-        # Basic QROM: ~4·data_size T-gates (And-based decomposition).
-        "T_gates_direct": "4*data_size",
-        "rotations": "0",
-        "cliffords": "4*data_size",
-        "n_qubits": "ceil(log2(data_size)) + target_bitsize",
+    # -- Arithmetic --
+    ("arithmetic", "add"): {
+        "required_params": ["n"],
+        "resources": {
+            "T_gates_direct": "4*n",
+            "rotations": "0",
+            "cliffords": "8*n",
+            "n_qubits": "2*n",
+        },
+    },
+    ("arithmetic", "add_oop"): {
+        "required_params": ["n"],
+        "resources": {
+            "T_gates_direct": "4*n",
+            "rotations": "0",
+            "cliffords": "8*n",
+            "n_qubits": "3*n",
+        },
+    },
+    ("arithmetic", "leq"): {
+        "required_params": ["n"],
+        "resources": {
+            "T_gates_direct": "4*n",
+            "rotations": "0",
+            "cliffords": "8*n",
+            "n_qubits": "2*n + 1",
+        },
+    },
+    ("arithmetic", "mul"): {
+        "required_params": ["n"],
+        "resources": {
+            # Product decomposes into O(n) additions of n-bit numbers.
+            "T_gates_direct": "4*n**2",
+            "rotations": "0",
+            "cliffords": "8*n**2",
+            "n_qubits": "4*n",
+        },
+    },
+    ("arithmetic", "modadd"): {
+        "required_params": ["n"],
+        "resources": {
+            # ModAdd uses ~5 additions + comparisons internally.
+            "T_gates_direct": "20*n",
+            "rotations": "0",
+            "cliffords": "40*n",
+            "n_qubits": "2*n + 1",
+        },
+    },
+    # -- QROM --
+    ("qrom", "basic"): {
+        "required_params": ["data_size", "target_bitsize"],
+        "resources": {
+            "T_gates_direct": "4*(data_size - 1)",
+            "rotations": "0",
+            "cliffords": "4*data_size",
+            "n_qubits": "ceil(log2(data_size)) + target_bitsize",
+        },
+    },
+    ("qrom", "selectswap"): {
+        "required_params": ["data_size", "target_bitsize"],
+        "resources": {
+            # SelectSwap reduces T-count at the expense of more ancillae.
+            # Exact formula depends on log_block_sizes; this is the
+            # dominant scaling term.
+            "T_gates_direct": "4*ceil(sqrt(data_size))",
+            "rotations": "0",
+            "cliffords": "4*data_size",
+            "n_qubits": "ceil(log2(data_size)) + 2*target_bitsize",
+        },
     },
 }
+
+
+def _resolve_variant_key(primitive: str, params: dict[str, Any]) -> tuple[str, str]:
+    """Determine the ``(primitive, variant_or_op)`` lookup key.
+
+    Falls back to ``"default"`` when no variant/op parameter is present.
+    """
+    variant = str(params.get("variant", params.get("op", "default")))
+    return (primitive, variant)
 
 
 def build_qref_program(
@@ -106,9 +198,13 @@ def build_qref_program(
         ]
 
     if symbolic:
-        resources = _build_symbolic_resources(name)
+        key = _resolve_variant_key(name, params)
+        resources, required_params = _build_symbolic_resources(key)
+        # Ensure all symbols referenced in formulas appear in input_params.
+        input_params = list(dict.fromkeys(list(params.keys()) + required_params))
     else:
         resources = _build_numeric_resources(costs)
+        input_params = list(params.keys())
 
     program: dict[str, Any] = {
         "version": cfg.version,
@@ -116,7 +212,7 @@ def build_qref_program(
             "name": name,
             "ports": ports,
             "resources": resources,
-            "input_params": list(params.keys()),
+            "input_params": input_params,
             "children": children or [],
             "connections": [],
         },
@@ -150,15 +246,23 @@ def _build_numeric_resources(costs: LogicalCosts) -> list[dict[str, Any]]:
     ]
 
 
-def _build_symbolic_resources(primitive: str) -> list[dict[str, Any]]:
-    """Symbolic resource expressions for Bartiq compilation."""
-    formulas = _SYMBOLIC_COSTS.get(primitive)
-    if formulas is None:
+def _build_symbolic_resources(
+    key: tuple[str, str],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Symbolic resource expressions for Bartiq compilation.
+
+    Returns ``(resources_list, required_params)`` so the caller can
+    merge required params into the program's ``input_params``.
+    """
+    entry = _SYMBOLIC_COSTS.get(key)
+    if entry is None:
+        available = sorted(f"{p}/{v}" for p, v in _SYMBOLIC_COSTS)
         raise ValueError(
-            f"No symbolic cost formulas for {primitive!r}; "
-            f"available: {sorted(_SYMBOLIC_COSTS)}"
+            f"No symbolic cost formulas for {key[0]!r} variant/op "
+            f"{key[1]!r}; available: {available}"
         )
-    return [
+    resources = [
         {"name": name, "type": "additive", "value": expr}
-        for name, expr in formulas.items()
+        for name, expr in entry["resources"].items()
     ]
+    return resources, list(entry["required_params"])
