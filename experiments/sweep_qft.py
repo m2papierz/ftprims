@@ -73,7 +73,9 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
         ("textbook", "#e74c3c", "o"),
         ("approx", "#3498db", "s"),
     ]:
-        subset = [r for r in rows if r["variant"] == variant]
+        subset = [r for r in rows if r["variant"] == variant and r["t_count_ftqc"] > 0]
+        if not subset:
+            continue
         ns = [r["n"] for r in subset]
         ts = [r["t_count_ftqc"] for r in subset]
         ax1.semilogy(
@@ -89,24 +91,35 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
     # Savings ratio
     tb = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "textbook"}
     ap = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "approx"}
-    ns_ratio = [n for n in sorted(tb) if ap[n] > 0]
+    ns_ratio = [n for n in sorted(tb) if ap.get(n, 0) > 0 and tb[n] > 0]
     ratios = [tb[n] / ap[n] for n in ns_ratio]
 
-    ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
+    if ns_ratio:
+        ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
+        for x, y in zip(ns_ratio, ratios):
+            ax2.annotate(
+                f"{y:.1f}×",
+                (x, y),
+                textcoords="offset points",
+                xytext=(0, -16),
+                ha="center",
+            )
+    else:
+        ax2.text(
+            0.5,
+            0.5,
+            "No data\n(approx variant returned zero costs)",
+            transform=ax2.transAxes,
+            ha="center",
+            va="center",
+            fontsize=11,
+            color="gray",
+        )
     ax2.axhline(y=1, color="gray", linestyle="--", alpha=0.5)
     ax2.set_xlabel("Bitsize (n)")
     ax2.set_ylabel("Textbook / Approximate")
     ax2.set_title("FTQC T-count Savings from Approximation")
     ax2.grid(True, alpha=0.3)
-
-    for x, y in zip(ns_ratio, ratios):
-        ax2.annotate(
-            f"{y:.1f}×",
-            (x, y),
-            textcoords="offset points",
-            xytext=(0, -16),
-            ha="center",
-        )
 
     plt.tight_layout()
     plt.savefig(path, dpi=150, bbox_inches="tight")
