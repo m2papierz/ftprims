@@ -1,5 +1,5 @@
-[![CI](https://github.com/devqubit-labs/devqubit/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/devqubit-labs/devqubit/actions/workflows/ci.yaml)
-[![Python](https://img.shields.io/pypi/pyversions/devqubit)](https://pypi.org/project/devqubit/)
+[![CI](https://github.com/m2papierz/ftprims/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/m2papierz/ftprims/actions/workflows/ci.yaml)
+[![Python](https://img.shields.io/pypi/pyversions/ftprims)](https://pypi.org/project/ftprims/)
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 
 # ftprims
@@ -19,12 +19,27 @@ Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qu
 
 ## Installation
 
-Requires Python 3.10–3.12 and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.10–3.12.
 
 ```bash
 git clone https://github.com/m2papierz/ftprims.git && cd ftprims
+
+# with uv (recommended)
 uv sync
+
+# or with pip
+pip install -e ".[dev]"
 ```
+
+## Quick start - run everything
+
+The `run_all.sh` script runs every benchmark, verification, QREF export, consistency check, and experiment sweep in one go:
+
+```bash
+./run_all.sh
+```
+
+Results (JSON, YAML, CSV, PNG charts) land in `results/`.
 
 ## Usage
 
@@ -57,6 +72,8 @@ uv run ftprims run qft -p n=16 -p variant=textbook --breakdown
 
 This adds a `breakdown` array and `breakdown_summary` to the JSON output. Categories: `rotations`, `qft_qpe_core`, `qrom_core`, `arithmetic_core`, `controlled_nonclifford`, `clifford_scaffolding`, `other`.
 
+Gate classification is cost-aware: parameterised `*PowGate` bloqs are classified as `rotations` when their exponent is non-Clifford (requires synthesis), rather than being lumped into `controlled_nonclifford` by name alone.
+
 Options: `--breakdown-depth` (call_graph depth, default 1), `--rotation-eps` (synthesis precision, default 1e-10).
 
 ### Physical model variants
@@ -73,6 +90,9 @@ uv run ftprims run qft -p n=32 --physical --data-d 21
 
 # Custom error budget
 uv run ftprims run qft -p n=32 --physical --error-budget 1e-2
+
+# Override physical error rate and cycle time
+uv run ftprims run qft -p n=32 --physical --physical-error 1e-4 --cycle-time-us 1.0
 ```
 
 Available profiles: `gidney_fowler` (default), `beverland`. Data blocks: `simple` (default), `compact`, `fast`. Factories: `ccz2t` (default), `fifteen_to_one`.
@@ -90,24 +110,33 @@ Use `--explain-json` to embed the explanation in the JSON output instead.
 ### Verify (small-scale Cirq simulation)
 
 ```bash
-uv run ftprims verify qft -p n=4
-uv run ftprims verify qpe -p m=4 -p phi=0.25
+uv run ftprims verify qft        -p n=4 -p variant=textbook
+uv run ftprims verify qft        -p n=4 -p variant=approx
+uv run ftprims verify qpe        -p m=4 -p phi=0.25
 uv run ftprims verify arithmetic -p n=4 -p op=add
-uv run ftprims verify qrom -p data_size=8
+uv run ftprims verify arithmetic -p n=4 -p op=modadd
+uv run ftprims verify qrom       -p data_size=8 -p target_bitsize=4 -p variant=basic
+uv run ftprims verify qrom       -p data_size=8 -p target_bitsize=4 -p variant=selectswap
 ```
 
 ### Export to QREF / Bartiq
 
 ```bash
-# Numeric export (concrete values)
+# Numeric export (concrete values from the Qualtran benchmark - authoritative)
 uv run ftprims export-qref qft -p n=32 --out results/qft.qref.yaml
 
-# Symbolic export (expressions for Bartiq compilation)
+# Symbolic export (approximate analytic formulas for Bartiq compilation)
 uv run ftprims export-qref qft -p n=32 --symbolic --out results/qft_sym.qref.yaml
+
+# Symbolic + consistency check against numeric benchmark
+uv run ftprims export-qref qft -p n=32 --symbolic --check --out results/qft_sym.qref.yaml
 
 # Compile and evaluate with Bartiq
 uv run ftprims bartiq results/qft_sym.qref.yaml --assign n=64
 ```
+
+> [!IMPORTANT]
+> Symbolic mode (`--symbolic`) exports **approximate analytic formulas** - textbook-level scaling terms that may diverge from the numeric benchmark at concrete parameter values. Use `--check` to compare the approximation against the real Qualtran numbers. Numeric export is always the authoritative cost source.
 
 ### Parameter sweep experiments
 
@@ -135,32 +164,35 @@ uv run ftprims dump-config --out config.yaml
 uv run ftprims run qft -p n=32 --physical --config config.yaml
 ```
 
-Key config options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget`, `physical_error`, `cycle_time_us`.
+Key config options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget`, `physical_error`, `cycle_time_us`, `data_d`.
 
 ## Output format
 
 Logical costs report two T-count metrics:
 
-- **`t_count_direct`** - raw T-gates + 4×CCZ/And. Accurate for pure Clifford+T circuits.
-- **`t_count_ftqc`** - includes rotation synthesis cost (Ross-Selinger model, configurable ε). This is the primary FTQC metric.
+- **`t_count_direct`** - raw T-gates + 4xCCZ/And. Accurate for pure Clifford+T circuits.
+- **`t_count_ftqc`** - includes rotation synthesis cost. This is the primary FTQC metric.
 
 When `--breakdown` is used, the output includes per-component cost attribution with estimated FTQC T-cost and a summary identifying the dominant component.
 
-Physical estimates include `failure_prob` and `budget_satisfied` - the model never silently masks an unmet error budget. With physical model variants, the output also records which `profile`, `data_block`, and `factory` were used.
+Physical estimates include `failure_prob` and `budget_satisfied` - the model never silently masks an unmet error budget. The output also records which `profile`, `data_block`, and `factory` were used, so results are reproducible across runs.
 
 ## Architecture
 
 ```
-src/ftprims/
-├── algorithms/        # Benchmark implementations (QFT, QPE, Arithmetic, QROM)
-│   └── _base.py       # Protocol, data models (LogicalCosts, PhysicalCosts, BreakdownItem)
-├── breakdown.py       # Structural cost breakdown via call_graph
-├── physical.py        # Surface-code physical model variants
-├── resource.py        # Logical cost extraction from Qualtran
-├── explain.py         # Rule-based result interpretation
-├── cli.py             # Click CLI
-├── config.py          # Configuration
-└── export.py          # QREF/Bartiq export
+ftprims/
+├── run_all.sh             # Run every benchmark, verify, export, and sweep
+├── src/ftprims/
+│   ├── algorithms/        # Benchmark implementations (QFT, QPE, Arithmetic, QROM)
+│   │   └── _base.py       # Protocol, data models (LogicalCosts, PhysicalCosts, BreakdownItem)
+│   ├── breakdown.py       # Structural cost breakdown via call_graph
+│   ├── physical.py        # Surface-code physical model variants
+│   ├── resource.py        # Logical cost extraction from Qualtran
+│   ├── explain.py         # Rule-based result interpretation
+│   ├── export.py          # QREF/Bartiq export (numeric + approximate symbolic)
+│   ├── cli.py             # Click CLI
+│   └── config.py          # Configuration
+└── experiments/           # Parameter sweep scripts (CSV + PNG output)
 ```
 
 ## License
