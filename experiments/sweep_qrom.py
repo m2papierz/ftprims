@@ -31,7 +31,7 @@ def collect_scaling(bench) -> list[dict]:
                 {
                     "data_size": data_size,
                     "variant": variant,
-                    "logical_qubits_estimate": costs.qubits,
+                    "logical_qubits_estimate": costs.logical_qubits_estimate,
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
                     "raw_t": costs.raw_t,
@@ -43,7 +43,7 @@ def collect_scaling(bench) -> list[dict]:
             print(
                 f"N={data_size:5d}  {variant:12s}  "
                 f"T_ftqc={costs.t_count_ftqc:>8,}  "
-                f"q={costs.qubits}"
+                f"q={costs.logical_qubits_estimate}"
             )
     return rows
 
@@ -63,11 +63,13 @@ def collect_pareto(bench, data_size: int = PARETO_DATA_SIZE) -> list[dict]:
         rows.append(
             {
                 "k": k,
-                "logical_qubits_estimate": costs.qubits,
+                "logical_qubits_estimate": costs.logical_qubits_estimate,
                 "t_count_ftqc": costs.t_count_ftqc,
             }
         )
-        print(f"  k={k}  T_ftqc={costs.t_count_ftqc:>8,}  q={costs.qubits}")
+        print(
+            f"  k={k}  T_ftqc={costs.t_count_ftqc:>8,}  q={costs.logical_qubits_estimate}"
+        )
     return rows
 
 

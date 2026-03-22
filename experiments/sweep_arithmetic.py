@@ -44,7 +44,7 @@ def collect(bench) -> list[dict]:
                 {
                     "op": op,
                     "n": n,
-                    "logical_qubits_estimate": costs.qubits,
+                    "logical_qubits_estimate": costs.logical_qubits_estimate,
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
                     "raw_t": costs.raw_t,
@@ -56,7 +56,7 @@ def collect(bench) -> list[dict]:
             print(
                 f"{op:10s}  n={n:4d}  "
                 f"T_ftqc={costs.t_count_ftqc:>10,}  "
-                f"q={costs.qubits}"
+                f"q={costs.logical_qubits_estimate}"
             )
     return rows
 

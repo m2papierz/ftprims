@@ -28,7 +28,7 @@ def collect(bench) -> list[dict]:
             {
                 "m": m,
                 "phi": PHI,
-                "logical_qubits_estimate": costs.qubits,
+                "logical_qubits_estimate": costs.logical_qubits_estimate,
                 "t_count_direct": costs.t_count_direct,
                 "t_count_ftqc": costs.t_count_ftqc,
                 "raw_t": costs.raw_t,
@@ -39,7 +39,7 @@ def collect(bench) -> list[dict]:
         )
         print(
             f"m={m:3d}  T_ftqc={costs.t_count_ftqc:>8,}  "
-            f"q={costs.qubits}  rot={costs.rotation_count}"
+            f"q={costs.logical_qubits_estimate}  rot={costs.rotation_count}"
         )
     return rows
 
