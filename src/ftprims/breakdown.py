@@ -8,18 +8,16 @@ a single aggregate number.
 
 from __future__ import annotations
 
-import math
 from collections import defaultdict
 
 from qualtran import Bloq
-from qualtran.resource_counting import QECGatesCost, get_cost_value
-from qualtran.resource_counting.generalizers import (
-    cirq_to_bloqs,
-    generalize_rotation_angle,
-    ignore_split_join,
-)
 
 from ftprims.algorithms._base import BreakdownItem
+from ftprims.resource import (
+    _default_generalizer,
+    _leaf_gate_costs,
+    rotation_synthesis_t_cost,
+)
 
 
 # Component taxonomy
@@ -101,52 +99,6 @@ def _is_parameterized_rotation(bloq: Bloq) -> bool:
         return True
 
 
-def _default_generalizer(bloq: Bloq) -> Bloq | None:
-    """Compose the standard generalizers for breakdown analysis."""
-    for g in (cirq_to_bloqs, generalize_rotation_angle, ignore_split_join):
-        bloq = g(bloq)
-        if bloq is None:
-            return None
-    return bloq
-
-
-def _rotation_t_cost(epsilon: float) -> int:
-    """T-gates to synthesise one rotation to precision *epsilon*."""
-    if epsilon <= 0:
-        return 0
-    return math.ceil(1.149 * math.log2(1.0 / epsilon) + 9.2)
-
-
-# Some Qualtran bloqs report zero via QECGatesCost but still carry
-# non-trivial gate cost (e.g. Toffoli decomposes into 1 And = 4T).
-# Map class name => (raw_t, and_count, rotations, cliffords).
-_COST_OVERRIDES: dict[str, tuple[int, int, int, int]] = {
-    "Toffoli": (0, 1, 0, 0),
-}
-
-
-def _leaf_gate_costs(leaf: Bloq) -> tuple[int, int, int, int]:
-    """Return ``(raw_t, and_count, rotations, cliffords)`` for a leaf.
-
-    Checks hardcoded overrides first, then falls back to
-    ``QECGatesCost``. Returns all zeros on failure.
-    """
-    name = type(leaf).__name__
-    override = _COST_OVERRIDES.get(name)
-    if override is not None:
-        return override
-    try:
-        gates = get_cost_value(leaf, QECGatesCost())
-        return (
-            int(gates.t),
-            int(gates.and_bloq),
-            int(gates.rotation),
-            int(gates.clifford),
-        )
-    except Exception:
-        return 0, 0, 0, 0
-
-
 def extract_structural_breakdown(
     bloq: Bloq,
     *,
@@ -186,7 +138,7 @@ def extract_structural_breakdown(
         }
     )
 
-    t_per_rot = _rotation_t_cost(rotation_eps)
+    t_per_rot = rotation_synthesis_t_cost(rotation_eps)
 
     for leaf, count in sigma.items():
         count = int(count)

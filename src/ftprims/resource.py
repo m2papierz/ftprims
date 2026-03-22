@@ -20,6 +20,11 @@ from qualtran.resource_counting import (
     QubitCount,
     get_cost_value,
 )
+from qualtran.resource_counting.generalizers import (
+    cirq_to_bloqs,
+    generalize_rotation_angle,
+    ignore_split_join,
+)
 
 from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 from ftprims.config import DEFAULT_CONFIG, SurfaceCodeConfig
@@ -39,12 +44,139 @@ def rotation_synthesis_t_cost(epsilon: float) -> int:
     return math.ceil(1.149 * math.log2(1.0 / epsilon) + 9.2)
 
 
+_CALL_GRAPH_MAX_DEPTH = 4
+
+# Bloqs whose QECGatesCost returns zero but have known non-trivial cost.
+_COST_OVERRIDES: dict[str, tuple[int, int, int, int]] = {
+    "Toffoli": (0, 1, 0, 0),  # (raw_t, and_count, rotations, cliffords)
+}
+
+
+def _default_generalizer(bloq: Bloq) -> Bloq | None:
+    """Compose the standard generalizers for call-graph traversal."""
+    for g in (cirq_to_bloqs, generalize_rotation_angle, ignore_split_join):
+        bloq = g(bloq)
+        if bloq is None:
+            return None
+    return bloq
+
+
+def _leaf_gate_costs(leaf: Bloq) -> tuple[int, int, int, int]:
+    """Return ``(raw_t, and_count, rotations, cliffords)`` for a leaf.
+
+    Checks hardcoded overrides first, then falls back to
+    ``QECGatesCost``.  Returns all zeros on failure.
+    """
+    override = _COST_OVERRIDES.get(type(leaf).__name__)
+    if override is not None:
+        return override
+    try:
+        gates = get_cost_value(leaf, QECGatesCost())
+        return (
+            int(gates.t),
+            int(gates.and_bloq),
+            int(gates.rotation),
+            int(gates.clifford),
+        )
+    except Exception:
+        return 0, 0, 0, 0
+
+
+def _extract_via_call_graph(bloq: Bloq) -> tuple[int, int, int, int]:
+    """Sum gate costs over the call-graph leaves.
+
+    Returns ``(raw_t, ccz_count, rotation_count, clifford_count)``.
+    Raises on failure so the caller can fall back to zeros.
+    """
+    _, sigma = bloq.call_graph(
+        generalizer=_default_generalizer,
+        max_depth=_CALL_GRAPH_MAX_DEPTH,
+    )
+
+    raw_t = 0
+    ccz_count = 0
+    rotation_count = 0
+    clifford_count = 0
+
+    for leaf, count in sigma.items():
+        n = int(count)
+        t, a, r, c = _leaf_gate_costs(leaf)
+        raw_t += n * t
+        ccz_count += n * a
+        rotation_count += n * r
+        clifford_count += n * c
+
+    return raw_t, ccz_count, rotation_count, clifford_count
+
+
+def _is_nontrivial(raw_t: int, ccz: int, rot: int, cliff: int) -> bool:
+    return (raw_t + ccz + rot + cliff) > 0
+
+
+def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
+    """Try progressively deeper extraction until we get non-zero costs.
+
+    Returns ``(raw_t, ccz_count, rotation_count, clifford_count, qubits)``.
+    The qubit count is updated from a decomposed bloq when the
+    top-level returns zero.
+    """
+    qubits = get_cost_value(bloq, QubitCount())
+
+    # Strategy 1: QECGatesCost on the top-level bloq.
+    try:
+        gates = get_cost_value(bloq, QECGatesCost())
+        vals = (
+            int(gates.t),
+            int(gates.and_bloq),
+            int(gates.rotation),
+            int(gates.clifford),
+        )
+        if _is_nontrivial(*vals):
+            return (*vals, int(qubits))
+    except Exception:
+        pass
+
+    # Strategy 2: one level of decomposition.
+    try:
+        decomposed = bloq.decompose_bloq()
+        gates = get_cost_value(decomposed, QECGatesCost())
+        vals = (
+            int(gates.t),
+            int(gates.and_bloq),
+            int(gates.rotation),
+            int(gates.clifford),
+        )
+        if _is_nontrivial(*vals):
+            q = get_cost_value(decomposed, QubitCount()) if int(qubits) == 0 else qubits
+            return (*vals, int(q))
+    except Exception:
+        pass
+
+    # Strategy 3: call_graph leaf aggregation (handles Product,
+    # ApproximateQFT, and other deeply-nested bloqs).
+    try:
+        vals = _extract_via_call_graph(bloq)
+        if _is_nontrivial(*vals):
+            return (*vals, int(qubits))
+    except Exception:
+        pass
+
+    return 0, 0, 0, 0, int(qubits)
+
+
 def extract_logical_costs(
     bloq: Bloq,
     *,
     rotation_synthesis_epsilon: float | None = None,
 ) -> LogicalCosts:
     """Pull qubit count and gate costs from a Qualtran Bloq.
+
+    Extraction strategy (first non-zero result wins):
+      1. ``QECGatesCost`` on the top-level bloq.
+      2. ``QECGatesCost`` after one level of ``decompose_bloq()``.
+      3. Leaf-level aggregation via ``call_graph`` — handles bloqs
+         like ``Product`` and ``ApproximateQFT`` whose costs only
+         emerge after deep decomposition.
 
     Parameters
     ----------
@@ -60,30 +192,7 @@ def extract_logical_costs(
             DEFAULT_CONFIG.surface_code.rotation_synthesis_epsilon
         )
 
-    qubits = get_cost_value(bloq, QubitCount())
-    gates = get_cost_value(bloq, QECGatesCost())
-
-    raw_t = int(gates.t)
-    ccz_count = int(gates.and_bloq)
-    rotation_count = int(gates.rotation)
-    clifford_count = int(gates.clifford)
-
-    # Some Qualtran bloqs (e.g. ApproximateQFT) report zero gate costs
-    # at the top level but carry non-trivial costs after decomposition.
-    # Try one level of decomposition as a fallback.
-    if raw_t == 0 and ccz_count == 0 and rotation_count == 0 and clifford_count == 0:
-        try:
-            decomposed = bloq.decompose_bloq()
-            gates = get_cost_value(decomposed, QECGatesCost())
-            raw_t = int(gates.t)
-            ccz_count = int(gates.and_bloq)
-            rotation_count = int(gates.rotation)
-            clifford_count = int(gates.clifford)
-            # Also update qubit count from decomposed bloq if original was 0.
-            if int(qubits) == 0:
-                qubits = get_cost_value(decomposed, QubitCount())
-        except Exception:
-            pass  # Keep zeros if decomposition also fails
+    raw_t, ccz_count, rotation_count, clifford_count, qubits = _try_extract_gates(bloq)
 
     t_count_direct = raw_t + 4 * ccz_count
 
@@ -95,7 +204,7 @@ def extract_logical_costs(
         t_count_ftqc = t_count_direct
 
     return LogicalCosts(
-        logical_qubits_estimate=int(qubits),
+        logical_qubits_estimate=qubits,
         t_count_direct=t_count_direct,
         t_count_ftqc=t_count_ftqc,
         raw_t=raw_t,
