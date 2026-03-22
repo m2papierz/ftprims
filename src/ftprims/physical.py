@@ -86,8 +86,12 @@ def make_physical_params(
 
     if physical_error is not None or cycle_time_us is not None:
         return PhysicalParameters(
-            physical_error=physical_error or base.physical_error,
-            cycle_time_us=cycle_time_us or base.cycle_time_us,
+            physical_error=(
+                physical_error if physical_error is not None else base.physical_error
+            ),
+            cycle_time_us=(
+                cycle_time_us if cycle_time_us is not None else base.cycle_time_us
+            ),
         )
     return base
 

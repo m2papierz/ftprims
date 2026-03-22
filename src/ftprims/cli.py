@@ -192,6 +192,7 @@ def run(
             "budget_satisfied": phys_result.budget_satisfied,
         }
 
+    explanation = None
     if explain or explain_json:
         from ftprims.explain import explain_run
 
@@ -207,7 +208,7 @@ def run(
 
     click.echo(json.dumps(result, indent=2))
 
-    if explain and not explain_json:
+    if explanation is not None and explain and not explain_json:
         click.echo()
         click.echo(f"  {explanation['headline']}")
         for obs in explanation["observations"]:
@@ -216,7 +217,7 @@ def run(
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         Path(out).write_text(json.dumps(result, indent=2))
-        click.echo(f"Saved → {out}")
+        click.echo(f"Saved => {out}")
 
 
 @main.command()
@@ -227,7 +228,7 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
     bench = registry[primitive]
     params = _parse_params(param)
     result = bench.verify_small(**params)
-    icons = {"pass": "✓ PASS", "fail": "✗ FAIL", "skip": "⊘ SKIP"}
+    icons = {"pass": "[OK] PASS", "fail": "[X] FAIL", "skip": "⊘ SKIP"}
     click.echo(f"{icons[result.status]}  {result.detail}")
 
 
@@ -258,7 +259,16 @@ def _infer_port_size(primitive: str, params: dict) -> int | None:
     "--symbolic",
     is_flag=True,
     default=False,
-    help="Export symbolic expressions for Bartiq (instead of concrete values)",
+    help=(
+        "Export approximate analytic expressions for Bartiq "
+        "(not a faithful export of the numeric benchmark)"
+    ),
+)
+@click.option(
+    "--check",
+    is_flag=True,
+    default=False,
+    help="Compare symbolic approximation against numeric benchmark",
 )
 @click.option(
     "--config", "config_path", type=click.Path(), default=None, help="Config YAML"
@@ -268,13 +278,18 @@ def export_qref(
     param: tuple[str, ...],
     out: str,
     symbolic: bool,
+    check: bool,
     config_path: str | None,
 ) -> None:
     """Export benchmark as a QREF v1 program.
 
     In numeric mode (default) concrete resource values are embedded.
-    In symbolic mode (--symbolic) resource expressions are written so
-    that ``ftprims bartiq`` can compile and evaluate them.
+    In symbolic mode (--symbolic) approximate analytic expressions are
+    written so that ``ftprims bartiq`` can compile and evaluate them.
+
+    Use ``--check`` with ``--symbolic`` to compare the analytic
+    approximation against the real Qualtran benchmark at the given
+    parameters.
     """
     from ftprims.export import build_qref_program, save_qref
 
@@ -282,21 +297,26 @@ def export_qref(
     bench = registry[primitive]
     params = _parse_params(param)
 
-    # In numeric mode we need to build the bloq to get costs.
-    # In symbolic mode costs are formula-based; we still need params for
-    # input_params list and port_size inference.
+    # Always build the bloq and compute numeric costs — needed for
+    # numeric mode directly, and for --check in symbolic mode.
+    need_numeric = (not symbolic) or check
+    numeric_costs = None
+    if need_numeric:
+        bloq = bench.build_bloq(**params)
+        numeric_costs = bench.logical_costs(bloq)
+
     if symbolic:
         from ftprims.algorithms._base import LogicalCosts
 
-        # Dummy costs — symbolic mode ignores them.
+        # Symbolic mode uses formula-based costs; pass dummy for build.
         costs = LogicalCosts(
             logical_qubits_estimate=0,
             t_count_direct=0,
             t_count_ftqc=0,
         )
     else:
-        bloq = bench.build_bloq(**params)
-        costs = bench.logical_costs(bloq)
+        assert numeric_costs is not None
+        costs = numeric_costs
 
     port_size = _infer_port_size(primitive, params)
     program = build_qref_program(
@@ -310,8 +330,36 @@ def export_qref(
 
     Path(out).parent.mkdir(parents=True, exist_ok=True)
     save_qref(program, out)
-    mode = "symbolic" if symbolic else "numeric"
-    click.echo(f"QREF exported ({mode}) → {out}")
+    mode = "symbolic (approximate analytic)" if symbolic else "numeric"
+    click.echo(f"QREF exported ({mode}) => {out}")
+
+    if symbolic:
+        click.echo(
+            "  [!] Symbolic formulas are textbook-level approximations, "
+            "not a faithful export of the numeric benchmark."
+        )
+
+    if check and symbolic and numeric_costs is not None:
+        from ftprims.export import check_symbolic_consistency
+
+        report = check_symbolic_consistency(primitive, params, numeric_costs)
+        if not report.get("available"):
+            click.echo(f"  Check skipped: {report.get('reason', 'unknown')}")
+        else:
+            ok = "[OK] consistent" if report["consistent"] else "[X] DIVERGENT"
+            click.echo(f"\n  Symbolic ↔ Numeric consistency: {ok}")
+            for field, comp in report["comparisons"].items():
+                if comp.get("match") is None:
+                    continue
+                sym = comp["symbolic"]
+                num = comp["numeric"]
+                icon = "[OK]" if comp["match"] else "[X]"
+                rel = comp.get("relative_error")
+                rel_str = f"  (delta={rel:.1%})" if rel and not comp["match"] else ""
+                click.echo(
+                    f"    {icon} {field:20s}  "
+                    f"symbolic={sym:>10,}  numeric={num:>10,}{rel_str}"
+                )
 
 
 @main.command()
@@ -353,7 +401,7 @@ def dump_config(out: str | None) -> None:
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
         Path(out).write_text(text)
-        click.echo(f"Config saved → {out}")
+        click.echo(f"Config saved => {out}")
     else:
         click.echo(text)
 
