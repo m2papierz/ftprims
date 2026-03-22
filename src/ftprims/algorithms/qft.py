@@ -80,7 +80,7 @@ class QFTBenchmark(Benchmark):
         n = int(n)
         if n > _MAX_VERIFY_N:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"n={n} too large for exact verification (max {_MAX_VERIFY_N})",
             )
 
@@ -90,7 +90,7 @@ class QFTBenchmark(Benchmark):
             U = bloq.tensor_contract()
         except Exception as exc:
             return VerificationResult(
-                passed=False, detail=f"tensor_contract failed: {exc}"
+                status="fail", detail=f"tensor_contract failed: {exc}"
             )
 
         # ApproximateQFT uses ancilla qubits, so the matrix dimension can
@@ -98,7 +98,7 @@ class QFTBenchmark(Benchmark):
         dim = U.shape[0]
 
         if not np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-6):
-            return VerificationResult(passed=False, detail="Matrix is not unitary")
+            return VerificationResult(status="fail", detail="Matrix is not unitary")
 
         if variant == "textbook":
             N = 1 << n
@@ -110,11 +110,11 @@ class QFTBenchmark(Benchmark):
             overlap = np.abs(np.trace(F.conj().T @ U)) / N
             if not np.isclose(overlap, 1.0, atol=1e-4):
                 return VerificationResult(
-                    passed=False,
+                    status="fail",
                     detail=f"Unitary does not match DFT (overlap={overlap:.6f})",
                 )
 
         detail = f"QFT({n}, {variant}): unitary OK ({dim}×{dim})"
         if variant == "textbook":
             detail += ", matches analytic DFT"
-        return VerificationResult(passed=True, detail=detail)
+        return VerificationResult(status="pass", detail=detail)

@@ -159,7 +159,7 @@ def _verify_classically(
             result = bloq.call_classically(**inputs)
         except Exception as exc:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"call_classically({inputs}) failed: {exc}",
             )
 
@@ -169,12 +169,12 @@ def _verify_classically(
 
         if actual != expected:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"Mismatch: inputs={inputs} expected={expected} got={actual}",
             )
 
     return VerificationResult(
-        passed=True,
+        status="pass",
         detail=f"{_VERIFY_SAMPLES} random vectors OK (n={n})",
     )
 
@@ -212,14 +212,14 @@ class ArithmeticBenchmark(Benchmark):
         n = int(n)
         if n > _MAX_VERIFY_N:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"n={n} too large for verification (max {_MAX_VERIFY_N})",
             )
 
         if op == "mul":
             # Product has no decomposition or classical simulation in Qualtran.
             return VerificationResult(
-                passed=True,
+                status="pass",
                 detail=f"Product(n={n}): classical simulation not supported by Qualtran; "
                 "cost extraction verified only",
             )
@@ -227,7 +227,7 @@ class ArithmeticBenchmark(Benchmark):
         oracle_factory = _ORACLES.get(op)
         if oracle_factory is None:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"No oracle for op={op!r}",
             )
 

@@ -101,13 +101,13 @@ class QPEBenchmark(Benchmark):
 
         if m > _MAX_VERIFY_M:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=f"m={m} too large for simulation (max {_MAX_VERIFY_M})",
             )
 
         if not _is_exact_phase(phi, m):
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=(
                     f"phi={phi} is not an exact multiple of 1/2^{m}; "
                     f"verification requires exact phases for deterministic output"
@@ -122,7 +122,7 @@ class QPEBenchmark(Benchmark):
             circuit, quregs = cbloq.to_cirq_circuit_and_quregs()
         except Exception as exc:
             return VerificationResult(
-                passed=False, detail=f"Circuit construction failed: {exc}"
+                status="fail", detail=f"Circuit construction failed: {exc}"
             )
 
         # Identify registers from quregs map
@@ -132,7 +132,7 @@ class QPEBenchmark(Benchmark):
             qpe_qubits = list(quregs["qpe_reg"].flat)
         except KeyError:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=(
                     f"Cannot find 'qpe_reg' in circuit registers; "
                     f"available: {list(quregs.keys())}"
@@ -146,7 +146,7 @@ class QPEBenchmark(Benchmark):
 
         if not target_qubits:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail="No target qubits found outside qpe_reg",
             )
 
@@ -179,7 +179,7 @@ class QPEBenchmark(Benchmark):
 
         if qpe_val != expected_val:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=(
                     f"Phase mismatch: measured QPE register={qpe_val} "
                     f"(phi={estimated_phi:.6f}), expected={expected_val} "
@@ -188,7 +188,7 @@ class QPEBenchmark(Benchmark):
             )
 
         return VerificationResult(
-            passed=True,
+            status="pass",
             detail=(
                 f"QPE(m={m}, phi={phi}): register={qpe_val}, "
                 f"estimated_phi={estimated_phi:.6f}, prob={probs[best]:.4f}"

@@ -132,7 +132,7 @@ class QROMBenchmark(Benchmark):
         data_size = int(data_size)
         if data_size > _MAX_VERIFY_DATA_SIZE:
             return VerificationResult(
-                passed=False,
+                status="fail",
                 detail=(
                     f"data_size={data_size} too large for verification "
                     f"(max {_MAX_VERIFY_DATA_SIZE})"
@@ -153,7 +153,7 @@ class QROMBenchmark(Benchmark):
                 result = bloq.call_classically(selection=sel, target0_=0)
             except Exception as exc:
                 return VerificationResult(
-                    passed=False,
+                    status="fail",
                     detail=f"call_classically(sel={sel}) failed: {exc}",
                 )
 
@@ -163,14 +163,14 @@ class QROMBenchmark(Benchmark):
             actual = int(result_dict["target0_"])
             if actual != data[sel]:
                 return VerificationResult(
-                    passed=False,
+                    status="fail",
                     detail=(
                         f"Mismatch at sel={sel}: expected={data[sel]} got={actual}"
                     ),
                 )
 
         return VerificationResult(
-            passed=True,
+            status="pass",
             detail=(
                 f"QROM({variant}, N={data_size}, bits={target_bitsize}): "
                 f"all {data_size} entries OK"
