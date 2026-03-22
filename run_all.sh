@@ -31,7 +31,7 @@ declare -a RUNS=(
 
 for run in "${RUNS[@]}"; do
     # Build output filename from args: qft_n=32_variant=textbook.json
-    slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ /_/g; s/^_//')
+    slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ //g; s/^_//')
     outfile="${RESULTS}/run_${slug}.json"
 
     echo "=> ftprims run $run"
@@ -93,7 +93,7 @@ declare -a EXPORTS=(
 )
 
 for ex in "${EXPORTS[@]}"; do
-    slug=$(echo "$ex" | tr -s ' ' | sed 's/ -p /_ /g; s/ /_/g; s/^_//')
+    slug=$(echo "$ex" | tr -s ' ' | sed 's/ -p /_ /g; s/ //g; s/^_//')
 
     # Numeric export
     # shellcheck disable=SC2086

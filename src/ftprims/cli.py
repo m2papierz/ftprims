@@ -347,7 +347,7 @@ def export_qref(
             click.echo(f"  Check skipped: {report.get('reason', 'unknown')}")
         else:
             ok = "[OK] consistent" if report["consistent"] else "[X] DIVERGENT"
-            click.echo(f"\n  Symbolic ↔ Numeric consistency: {ok}")
+            click.echo(f"\n  Symbolic <===> Numeric consistency: {ok}")
             for field, comp in report["comparisons"].items():
                 if comp.get("match") is None:
                     continue
