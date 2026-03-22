@@ -133,30 +133,32 @@ class QPEBenchmark(Benchmark):
                 status="fail", detail=f"Circuit construction failed: {exc}"
             )
 
-        # Identify registers from quregs map
-        # TextbookQPE signature: qpe_reg (m qubits) + unitary target reg.
-        # quregs maps register names to numpy arrays of cirq qubits.
-        try:
-            qpe_qubits = list(quregs["qpe_reg"].flat)
-        except KeyError:
+        # Identify registers from quregs map by name.
+        # TextbookQPE signature: qpe_reg (m qubits) + unitary target register(s).
+        available = list(quregs.keys())
+
+        if "qpe_reg" not in quregs:
             return VerificationResult(
                 status="fail",
                 detail=(
                     f"Cannot find 'qpe_reg' in circuit registers; "
-                    f"available: {list(quregs.keys())}"
+                    f"available: {available}"
                 ),
             )
 
-        # Target register: everything that is not qpe_reg.
-        all_qubits_set = set(circuit.all_qubits())
-        qpe_set = set(qpe_qubits)
-        target_qubits = sorted(all_qubits_set - qpe_set)
+        qpe_qubits = list(quregs["qpe_reg"].flat)
 
-        if not target_qubits:
+        # Target register: the first named register that is not qpe_reg.
+        target_names = [k for k in available if k != "qpe_reg"]
+        if not target_names:
             return VerificationResult(
                 status="fail",
-                detail="No target qubits found outside qpe_reg",
+                detail="No target register found in quregs besides qpe_reg",
             )
+
+        target_qubits = []
+        for name in target_names:
+            target_qubits.extend(list(quregs[name].flat))
 
         # Build qubit order: qpe_reg first, then target
         # This way the top bits of the state vector index are the QPE
@@ -165,14 +167,16 @@ class QPEBenchmark(Benchmark):
         n_target = len(target_qubits)
 
         # Prepare initial state
-        # QPE register: |0…0⟩, target: |1⟩ (eigenstate of ZPowGate).
+        # QPE register: |0...0⟩, target: |1⟩ (eigenstate of ZPowGate).
         # With our qubit order, target is in the lowest bits.
-        initial_state = 1  # |0…0⟩|1⟩
+        initial_state = 1  # |0...0⟩|1⟩
 
         # Simulate
         sim = cirq.Simulator()
         result = sim.simulate(
-            circuit, initial_state=initial_state, qubit_order=qubit_order
+            circuit,
+            initial_state=initial_state,
+            qubit_order=qubit_order,
         )
         probs = np.abs(result.final_state_vector) ** 2
         best = int(np.argmax(probs))
