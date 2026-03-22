@@ -34,7 +34,7 @@ for run in "${RUNS[@]}"; do
     slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ /_/g; s/^_//')
     outfile="${RESULTS}/run_${slug}.json"
 
-    echo "→ ftprims run $run"
+    echo "=> ftprims run $run"
     # shellcheck disable=SC2086
     ftprims run $run \
         --breakdown --physical --explain-json \
@@ -53,7 +53,7 @@ declare -a PHYS_VARIANTS=(
 )
 
 for run in "${PHYS_VARIANTS[@]}"; do
-    echo "→ ftprims run $run --physical --breakdown"
+    echo "=> ftprims run $run --physical --breakdown"
     # shellcheck disable=SC2086
     ftprims run $run --physical --breakdown \
     && ok "done" || fail "run $run"
