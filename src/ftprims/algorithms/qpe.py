@@ -11,6 +11,9 @@ and the check is bit-exact.  Register identification uses
 
 from __future__ import annotations
 
+import functools
+import operator
+
 import cirq
 import numpy as np
 from qualtran import Bloq
@@ -65,6 +68,45 @@ def _is_exact_phase(phi: float, m: int) -> bool:
     """Check whether *phi* is an exact multiple of 1/2^m."""
     scaled = phi * (1 << m)
     return abs(scaled - round(scaled)) < 1e-12
+
+
+def _total_qubits_from_signature(bloq: Bloq) -> int:
+    """Derive the total qubit count from the bloq's register signature."""
+    total = 0
+    for reg in bloq.signature:
+        size = int(reg.bitsize)
+        shape = tuple(int(s) for s in reg.shape) if reg.shape else ()
+        n_entries = functools.reduce(operator.mul, shape, 1)
+        total += size * n_entries
+    return total
+
+
+def _tensor_to_unitary(bloq: Bloq) -> np.ndarray:
+    """Extract a 2D unitary matrix from a bloq's tensor contraction.
+
+    Qualtran's ``tensor_contract`` may return a higher-dimensional
+    tensor when the bloq has multiple named registers.  This function
+    reshapes the result into a square 2D unitary.
+
+    Tries the bloq directly first, then one level of decomposition.
+    """
+    n_qubits = _total_qubits_from_signature(bloq)
+    dim = 1 << n_qubits
+
+    for source_name, source in [
+        ("bloq", bloq),
+        ("decompose_bloq", bloq.decompose_bloq()),
+    ]:
+        try:
+            tensor = source.tensor_contract()
+            U = np.reshape(tensor, (dim, dim))
+            return U
+        except Exception:
+            continue
+
+    raise RuntimeError(
+        f"tensor_contract failed for QPE bloq ({n_qubits} qubits, dim={dim})"
+    )
 
 
 @register
@@ -211,10 +253,15 @@ class QPEBenchmark(Benchmark):
         """Fallback QPE verification using tensor_contract().
 
         Used when Cirq circuit construction fails. Applies the QPE
-        unitary and checks that the QPE register encodes the expected phase.
+        unitary to |0...0⟩|1⟩ and checks that the QPE register encodes
+        the expected phase.
+
+        Qualtran's tensor_contract() may return a multi-dimensional
+        tensor for bloqs with multiple named registers, so we derive
+        the expected dimension from the signature and reshape.
         """
         try:
-            U = bloq.tensor_contract()
+            U = _tensor_to_unitary(bloq)
         except Exception as exc:
             return VerificationResult(
                 status="fail",
@@ -224,6 +271,15 @@ class QPEBenchmark(Benchmark):
         dim = U.shape[0]
         n_total = int(round(np.log2(dim)))
         n_target = n_total - m  # remaining qubits are target
+
+        if n_target < 1:
+            return VerificationResult(
+                status="fail",
+                detail=(
+                    f"Unexpected dimensions: total qubits={n_total}, m={m}, "
+                    f"target qubits={n_target} (must be ≥ 1)"
+                ),
+            )
 
         # Initial state: QPE register |0...0⟩, target |1⟩ (LSBs).
         initial = np.zeros(dim, dtype=complex)
