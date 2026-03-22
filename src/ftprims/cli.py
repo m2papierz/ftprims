@@ -55,7 +55,7 @@ def run(
         "primitive": primitive,
         "params": params,
         "logical": {
-            "logical_qubits_estimate": costs.qubits,
+            "logical_qubits_estimate": costs.logical_qubits_estimate,
             "t_count_direct": costs.t_count_direct,
             "t_count_ftqc": costs.t_count_ftqc,
             "raw_t": costs.raw_t,
@@ -93,8 +93,8 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
     bench = registry[primitive]
     params = _parse_params(param)
     result = bench.verify_small(**params)
-    status = "✓ PASS" if result.passed else "✗ FAIL"
-    click.echo(f"{status}  {result.detail}")
+    icons = {"pass": "✓ PASS", "fail": "✗ FAIL", "skip": "⊘ SKIP"}
+    click.echo(f"{icons[result.status]}  {result.detail}")
 
 
 # Port-size heuristic for QREF export
@@ -156,7 +156,7 @@ def export_qref(
 
         # Dummy costs — symbolic mode ignores them.
         costs = LogicalCosts(
-            qubits=0,
+            logical_qubits_estimate=0,
             t_count_direct=0,
             t_count_ftqc=0,
         )

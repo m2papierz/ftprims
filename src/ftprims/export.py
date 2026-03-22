@@ -142,7 +142,11 @@ def _build_numeric_resources(costs: LogicalCosts) -> list[dict[str, Any]]:
         {"name": "T_gates_direct", "type": "additive", "value": costs.t_count_direct},
         {"name": "rotations", "type": "additive", "value": costs.rotation_count},
         {"name": "cliffords", "type": "additive", "value": costs.clifford_count},
-        {"name": "n_qubits", "type": "additive", "value": costs.qubits},
+        {
+            "name": "n_qubits",
+            "type": "additive",
+            "value": costs.logical_qubits_estimate,
+        },
     ]
 
 

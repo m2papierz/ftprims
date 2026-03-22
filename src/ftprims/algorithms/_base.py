@@ -2,17 +2,29 @@
 
 from __future__ import annotations
 
-from typing import Any, Protocol, runtime_checkable
+from typing import Any, Literal, Protocol, runtime_checkable
 
 import attrs
 from qualtran import Bloq
 
 
 @attrs.define(frozen=True)
+class BreakdownItem:
+    """One component in a structural cost breakdown."""
+
+    component: str
+    invocations: int
+    direct_t: int = 0
+    clifford_count: int = 0
+    rotation_count: int = 0
+    est_t_ftqc: int = 0
+
+
+@attrs.define(frozen=True)
 class LogicalCosts:
     """Logical-level resource counts."""
 
-    qubits: int
+    logical_qubits_estimate: int
     t_count_direct: int
     t_count_ftqc: int
     raw_t: int = 0
@@ -20,6 +32,7 @@ class LogicalCosts:
     clifford_count: int = 0
     rotation_count: int = 0
     rotation_synthesis_epsilon: float | None = None
+    breakdown: tuple[BreakdownItem, ...] = ()
 
 
 @attrs.define(frozen=True)
@@ -32,13 +45,16 @@ class PhysicalCosts:
     error_budget: float
     failure_prob: float
     budget_satisfied: bool
+    profile: str = "gidney_fowler"
+    data_block: str = "simple"
+    factory: str = "ccz2t"
 
 
 @attrs.define(frozen=True)
 class VerificationResult:
     """Outcome of a small-scale Cirq simulation check."""
 
-    passed: bool
+    status: Literal["pass", "fail", "skip"]
     detail: str = ""
 
 

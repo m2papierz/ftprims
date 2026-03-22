@@ -93,7 +93,7 @@ def extract_logical_costs(
         t_count_ftqc = t_count_direct
 
     return LogicalCosts(
-        qubits=int(qubits),
+        logical_qubits_estimate=int(qubits),
         t_count_direct=t_count_direct,
         t_count_ftqc=t_count_ftqc,
         raw_t=raw_t,
@@ -191,7 +191,7 @@ def estimate_physical(
     else:
         assert logical is not None
         summary = AlgorithmSummary(
-            n_algo_qubits=logical.qubits,
+            n_algo_qubits=logical.logical_qubits_estimate,
             # Pass separated counts - do NOT feed t_equivalent into
             # GateCounts.t; that would double-count CCZ.
             n_logical_gates=summary_gate_counts(logical),
