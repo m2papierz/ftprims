@@ -1,7 +1,3 @@
-[![CI](https://github.com/m2papierz/ftprims/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/m2papierz/ftprims/actions/workflows/ci.yaml)
-[![Python](https://img.shields.io/pypi/pyversions/ftprims)](https://pypi.org/project/ftprims/)
-[![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
-
 # ftprims
 Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq) with native [QREF](https://github.com/PsiQ/qref) / [Bartiq](https://github.com/PsiQ/bartiq) export. Benchmark canonical FTQC building blocks, extract logical & physical resource costs via Qualtran, verify correctness with Cirq simulation, and export results as QREF programs for cost propagation in Bartiq.
 
