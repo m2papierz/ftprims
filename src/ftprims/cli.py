@@ -31,6 +31,57 @@ def main() -> None:
 )
 @click.option("--physical", is_flag=True, help="Include surface-code physical estimate")
 @click.option(
+    "--profile",
+    type=click.Choice(["gidney_fowler", "beverland"]),
+    default="gidney_fowler",
+    show_default=True,
+    help="QEC profile preset",
+)
+@click.option(
+    "--data-block",
+    type=click.Choice(["simple", "compact", "fast"]),
+    default="simple",
+    show_default=True,
+    help="Surface-code data block type",
+)
+@click.option(
+    "--factory",
+    type=click.Choice(["ccz2t", "fifteen_to_one"]),
+    default="ccz2t",
+    show_default=True,
+    help="Magic-state factory",
+)
+@click.option(
+    "--data-d",
+    type=int,
+    default=None,
+    help="Fixed code distance (auto-search if omitted)",
+)
+@click.option(
+    "--error-budget", type=float, default=1e-3, show_default=True, help="Error budget"
+)
+@click.option(
+    "--physical-error", type=float, default=None, help="Override physical error rate"
+)
+@click.option(
+    "--cycle-time-us", type=float, default=None, help="Override cycle time (µs)"
+)
+@click.option("--breakdown", is_flag=True, help="Include structural cost breakdown")
+@click.option(
+    "--breakdown-depth",
+    type=int,
+    default=1,
+    show_default=True,
+    help="call_graph max_depth",
+)
+@click.option(
+    "--rotation-eps",
+    type=float,
+    default=1e-10,
+    show_default=True,
+    help="Rotation synthesis",
+)
+@click.option(
     "--config", "config_path", type=click.Path(), default=None, help="Config YAML"
 )
 def run(
@@ -38,11 +89,19 @@ def run(
     param: tuple[str, ...],
     out: str | None,
     physical: bool,
+    profile: str,
+    data_block: str,
+    factory: str,
+    data_d: int | None,
+    error_budget: float,
+    physical_error: float | None,
+    cycle_time_us: float | None,
+    breakdown: bool,
+    breakdown_depth: int,
+    rotation_eps: float,
     config_path: str | None,
 ) -> None:
     """Run a single benchmark and report resource costs."""
-    from ftprims.resource import estimate_physical
-
     cfg = _load_config(config_path)
     bench = registry[primitive]
     params = _parse_params(param)
@@ -66,9 +125,37 @@ def run(
         },
     }
 
+    if breakdown:
+        import attrs
+
+        from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
+
+        items = extract_structural_breakdown(
+            bloq,
+            depth=breakdown_depth,
+            rotation_eps=rotation_eps,
+        )
+        result["breakdown"] = [attrs.asdict(item) for item in items]
+        result["breakdown_summary"] = summarize_breakdown(items)
+
     if physical:
-        phys = estimate_physical(bloq=bloq, cfg=cfg.surface_code)
+        from ftprims.physical import PhysicalModelSpec
+        from ftprims.physical import estimate_physical as phys_estimate
+
+        spec = PhysicalModelSpec(
+            profile=profile,
+            data_block=data_block,
+            factory=factory,
+            data_d=data_d,
+            error_budget=error_budget,
+            physical_error=physical_error,
+            cycle_time_us=cycle_time_us,
+        )
+        phys = phys_estimate(costs, spec=spec)
         result["physical"] = {
+            "profile": phys.profile,
+            "data_block": phys.data_block,
+            "factory": phys.factory,
             "physical_qubits": phys.physical_qubits,
             "wall_time_us": phys.wall_time_us,
             "code_distance": phys.code_distance,
