@@ -198,8 +198,16 @@ class ArithmeticBenchmark(Benchmark):
             mod=int(mod) if mod is not None else None,
         )
 
-    def logical_costs(self, bloq: Bloq) -> LogicalCosts:
-        return extract_logical_costs(bloq)
+    def logical_costs(
+        self,
+        bloq: Bloq,
+        *,
+        rotation_synthesis_epsilon: float | None = None,
+    ) -> LogicalCosts:
+        return extract_logical_costs(
+            bloq,
+            rotation_synthesis_epsilon=rotation_synthesis_epsilon,
+        )
 
     def verify_small(
         self,

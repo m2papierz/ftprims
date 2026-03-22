@@ -58,7 +58,10 @@ def main() -> None:
     help="Fixed code distance (auto-search if omitted)",
 )
 @click.option(
-    "--error-budget", type=float, default=1e-3, show_default=True, help="Error budget"
+    "--error-budget",
+    type=float,
+    default=None,
+    help="Error budget (default from config: 1e-3)",
 )
 @click.option(
     "--physical-error", type=float, default=None, help="Override physical error rate"
@@ -77,9 +80,8 @@ def main() -> None:
 @click.option(
     "--rotation-eps",
     type=float,
-    default=1e-10,
-    show_default=True,
-    help="Rotation synthesis",
+    default=None,
+    help="Rotation synthesis epsilon (default from config: 1e-10)",
 )
 @click.option("--explain", is_flag=True, help="Print interpretation after JSON output")
 @click.option("--explain-json", is_flag=True, help="Embed explanation in JSON output")
@@ -95,12 +97,12 @@ def run(
     data_block: str,
     factory: str,
     data_d: int | None,
-    error_budget: float,
+    error_budget: float | None,
     physical_error: float | None,
     cycle_time_us: float | None,
     breakdown: bool,
     breakdown_depth: int,
-    rotation_eps: float,
+    rotation_eps: float | None,
     explain: bool,
     explain_json: bool,
     config_path: str | None,
@@ -111,8 +113,27 @@ def run(
     params = _parse_params(param)
     click.echo(f"Building {primitive} with {params}")
 
+    # Resolve configuration: CLI overrides config, config overrides hardcoded defaults.
+    eps = (
+        rotation_eps
+        if rotation_eps is not None
+        else cfg.surface_code.rotation_synthesis_epsilon
+    )
+    _error_budget = (
+        error_budget if error_budget is not None else cfg.surface_code.error_budget
+    )
+    _physical_error = (
+        physical_error
+        if physical_error is not None
+        else cfg.surface_code.physical_error
+    )
+    _cycle_time_us = (
+        cycle_time_us if cycle_time_us is not None else cfg.surface_code.cycle_time_us
+    )
+    _data_d = data_d if data_d is not None else cfg.surface_code.data_d
+
     bloq = bench.build_bloq(**params)
-    costs = bench.logical_costs(bloq)
+    costs = bench.logical_costs(bloq, rotation_synthesis_epsilon=eps)
 
     result: dict = {
         "primitive": primitive,
@@ -138,7 +159,7 @@ def run(
         items = extract_structural_breakdown(
             bloq,
             depth=breakdown_depth,
-            rotation_eps=rotation_eps,
+            rotation_eps=eps,
         )
         breakdown_items = items
         result["breakdown"] = [attrs.asdict(item) for item in items]
@@ -153,10 +174,10 @@ def run(
             profile=profile,
             data_block=data_block,
             factory=factory,
-            data_d=data_d,
-            error_budget=error_budget,
-            physical_error=physical_error,
-            cycle_time_us=cycle_time_us,
+            data_d=_data_d,
+            error_budget=_error_budget,
+            physical_error=_physical_error,
+            cycle_time_us=_cycle_time_us,
         )
         phys_result = phys_estimate(costs, spec=spec)
         result["physical"] = {

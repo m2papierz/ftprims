@@ -13,9 +13,9 @@ import yaml
 class SurfaceCodeConfig:
     """Parameters for the Gidney-Fowler surface-code physical cost model."""
 
-    # PhysicalParameters
-    physical_error: float = 1e-3
-    cycle_time_us: float = 1.0
+    # PhysicalParameters: None means "use QEC profile preset"
+    physical_error: float | None = None
+    cycle_time_us: float | None = None
 
     # QECScheme
     error_rate_scaler: float = 0.03

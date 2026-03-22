@@ -83,8 +83,16 @@ class QPEBenchmark(Benchmark):
     ) -> Bloq:
         return _build_qpe(m=int(m), phi=float(phi), unitary=unitary)
 
-    def logical_costs(self, bloq: Bloq) -> LogicalCosts:
-        return extract_logical_costs(bloq)
+    def logical_costs(
+        self,
+        bloq: Bloq,
+        *,
+        rotation_synthesis_epsilon: float | None = None,
+    ) -> LogicalCosts:
+        return extract_logical_costs(
+            bloq,
+            rotation_synthesis_epsilon=rotation_synthesis_epsilon,
+        )
 
     def verify_small(self, *, m: int = 4, phi: float = 0.25) -> VerificationResult:
         """Verify QPE via Cirq simulation on the eigenstate |1⟩.

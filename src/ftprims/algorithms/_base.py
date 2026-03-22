@@ -66,7 +66,12 @@ class Benchmark(Protocol):
 
     def build_bloq(self, **params: Any) -> Bloq: ...
 
-    def logical_costs(self, bloq: Bloq) -> LogicalCosts: ...
+    def logical_costs(
+        self,
+        bloq: Bloq,
+        *,
+        rotation_synthesis_epsilon: float | None = None,
+    ) -> LogicalCosts: ...
 
     def verify_small(self, **params: Any) -> VerificationResult: ...
 
