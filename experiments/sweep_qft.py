@@ -36,6 +36,7 @@ def collect(bench) -> list[dict]:
                     "logical_qubits_estimate": costs.logical_qubits_estimate,
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
+                    "clifford_count": costs.clifford_count,
                     "rotation_count": costs.rotation_count,
                     "dominant_component": summary.get("dominant_component", ""),
                     "dominant_share": round(summary.get("dominant_share", 0), 3),
@@ -88,13 +89,16 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
     ax1.legend()
     ax1.grid(True, alpha=0.3, which="both")
 
-    # Savings ratio
+    # Right panel: T-count savings ratio, or Clifford comparison if
+    # the approximate variant has zero T-cost (phase-gradient trick
+    # compiles all rotations to Clifford additions).
     tb = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "textbook"}
     ap = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "approx"}
     ns_ratio = [n for n in sorted(tb) if ap.get(n, 0) > 0 and tb[n] > 0]
-    ratios = [tb[n] / ap[n] for n in ns_ratio]
 
     if ns_ratio:
+        # Both variants have nonzero T-cost — show savings ratio.
+        ratios = [tb[n] / ap[n] for n in ns_ratio]
         ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
         for x, y in zip(ns_ratio, ratios):
             ax2.annotate(
@@ -104,22 +108,34 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
                 xytext=(0, -16),
                 ha="center",
             )
+        ax2.axhline(y=1, color="gray", linestyle="--", alpha=0.5)
+        ax2.set_ylabel("Textbook / Approximate")
+        ax2.set_title("FTQC T-count Savings from Approximation")
     else:
-        ax2.text(
-            0.5,
-            0.5,
-            "No data\n(approx variant returned zero costs)",
-            transform=ax2.transAxes,
-            ha="center",
-            va="center",
-            fontsize=11,
-            color="gray",
-        )
-    ax2.axhline(y=1, color="gray", linestyle="--", alpha=0.5)
+        # Approx has zero T-cost — show Clifford count comparison.
+        for variant, color, marker in [
+            ("textbook", "#e74c3c", "o"),
+            ("approx", "#3498db", "s"),
+        ]:
+            subset = [r for r in rows if r["variant"] == variant]
+            cs = [r["clifford_count"] for r in subset]
+            ns = [r["n"] for r in subset]
+            if any(c > 0 for c in cs):
+                ax2.semilogy(
+                    ns,
+                    cs,
+                    f"{marker}-",
+                    color=color,
+                    linewidth=2,
+                    markersize=8,
+                    label=variant,
+                )
+        ax2.set_ylabel("Clifford gate count")
+        ax2.set_title("QFT: Clifford Cost Comparison")
+        ax2.legend()
+
     ax2.set_xlabel("Bitsize (n)")
-    ax2.set_ylabel("Textbook / Approximate")
-    ax2.set_title("FTQC T-count Savings from Approximation")
-    ax2.grid(True, alpha=0.3)
+    ax2.grid(True, alpha=0.3, which="both")
 
     plt.tight_layout()
     plt.savefig(path, dpi=150, bbox_inches="tight")
