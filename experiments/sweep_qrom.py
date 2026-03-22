@@ -29,7 +29,7 @@ def collect_scaling(bench) -> list[dict]:
         for variant in ["basic", "selectswap"]:
             bloq = bench.build_bloq(data_size=data_size, variant=variant)
             costs = bench.logical_costs(bloq)
-            items = extract_structural_breakdown(bloq)
+            items = extract_structural_breakdown(bloq, depth=2)
             summary = summarize_breakdown(items)
 
             def _ftqc(component: str) -> int:
