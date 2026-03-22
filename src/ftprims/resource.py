@@ -68,6 +68,23 @@ def extract_logical_costs(
     rotation_count = int(gates.rotation)
     clifford_count = int(gates.clifford)
 
+    # Some Qualtran bloqs (e.g. ApproximateQFT) report zero gate costs
+    # at the top level but carry non-trivial costs after decomposition.
+    # Try one level of decomposition as a fallback.
+    if raw_t == 0 and ccz_count == 0 and rotation_count == 0 and clifford_count == 0:
+        try:
+            decomposed = bloq.decompose_bloq()
+            gates = get_cost_value(decomposed, QECGatesCost())
+            raw_t = int(gates.t)
+            ccz_count = int(gates.and_bloq)
+            rotation_count = int(gates.rotation)
+            clifford_count = int(gates.clifford)
+            # Also update qubit count from decomposed bloq if original was 0.
+            if int(qubits) == 0:
+                qubits = get_cost_value(decomposed, QubitCount())
+        except Exception:
+            pass  # Keep zeros if decomposition also fails
+
     t_count_direct = raw_t + 4 * ccz_count
 
     # FTQC total: direct T-gates + synthesised rotations.
