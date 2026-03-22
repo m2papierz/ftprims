@@ -1,5 +1,6 @@
+#!/usr/bin/env bash
 # Run every ftprims benchmark, verify, export, and sweep.
-set -euo pipefail
+set -uo pipefail
 
 RESULTS="results"
 mkdir -p "$RESULTS"
@@ -9,9 +10,11 @@ CYAN='\033[0;36m'
 RED='\033[0;31m'
 NC='\033[0m'
 
+FAIL_COUNT=0
+
 section() { echo -e "\n${CYAN}═══ $1 ═══${NC}\n"; }
 ok()      { echo -e "${GREEN}✓ $1${NC}"; }
-fail()    { echo -e "${RED}✗ $1${NC}"; }
+fail()    { echo -e "${RED}✗ $1${NC}"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
 # Numeric runs
 section "NUMERIC RUNS (--breakdown --physical --explain-json)"
@@ -36,13 +39,16 @@ for run in "${RUNS[@]}"; do
 
     echo "=> ftprims run $run"
     # shellcheck disable=SC2086
-    ftprims run $run \
+    if ftprims run $run \
         --breakdown --physical --explain-json \
-        --out "$outfile" \
-    && ok "$outfile" || fail "run $run"
+        --out "$outfile"; then
+        ok "$outfile"
+    else
+        fail "run $run"
+    fi
 done
 
-# ─Physical model comparison
+# Physical model comparison
 section "PHYSICAL MODEL VARIANTS"
 
 declare -a PHYS_VARIANTS=(
@@ -55,8 +61,11 @@ declare -a PHYS_VARIANTS=(
 for run in "${PHYS_VARIANTS[@]}"; do
     echo "=> ftprims run $run --physical --breakdown"
     # shellcheck disable=SC2086
-    ftprims run $run --physical --breakdown \
-    && ok "done" || fail "run $run"
+    if ftprims run $run --physical --breakdown; then
+        ok "done"
+    else
+        fail "run $run"
+    fi
 done
 
 # Verify (small-scale Cirq simulation)
@@ -76,7 +85,9 @@ declare -a VERIFIES=(
 
 for v in "${VERIFIES[@]}"; do
     # shellcheck disable=SC2086
-    ftprims verify $v || fail "verify $v"
+    if ! ftprims verify $v; then
+        fail "verify $v"
+    fi
 done
 
 # QREF export + symbolic consistency check
@@ -97,44 +108,66 @@ for ex in "${EXPORTS[@]}"; do
 
     # Numeric export
     # shellcheck disable=SC2086
-    ftprims export-qref $ex \
-        --out "${RESULTS}/qref_${slug}.yaml" \
-    && ok "numeric: qref_${slug}.yaml" || fail "export $ex"
+    if ftprims export-qref $ex \
+        --out "${RESULTS}/qref_${slug}.yaml"; then
+        ok "numeric: qref_${slug}.yaml"
+    else
+        fail "export $ex"
+    fi
 
     # Symbolic export + consistency check
     # shellcheck disable=SC2086
-    ftprims export-qref $ex \
+    if ftprims export-qref $ex \
         --symbolic --check \
-        --out "${RESULTS}/qref_${slug}_symbolic.yaml" \
-    && ok "symbolic: qref_${slug}_symbolic.yaml" || fail "symbolic export $ex"
+        --out "${RESULTS}/qref_${slug}_symbolic.yaml"; then
+        ok "symbolic: qref_${slug}_symbolic.yaml"
+    else
+        fail "symbolic export $ex"
+    fi
 done
 
 # Bartiq compile (one example)
 section "BARTIQ COMPILE"
 
-ftprims bartiq "${RESULTS}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32 \
-&& ok "bartiq QFT" || fail "bartiq QFT"
+if ftprims bartiq "${RESULTS}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
+    ok "bartiq QFT"
+else
+    fail "bartiq QFT"
+fi
 
-ftprims bartiq "${RESULTS}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16 \
-&& ok "bartiq arithmetic/add" || fail "bartiq arithmetic/add"
+if ftprims bartiq "${RESULTS}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
+    ok "bartiq arithmetic/add"
+else
+    fail "bartiq arithmetic/add"
+fi
 
 # Experiment sweeps
 section "EXPERIMENT SWEEPS (CSV + charts)"
 
-python experiments/sweep_qft.py        && ok "sweep_qft"
-python experiments/sweep_qpe.py        && ok "sweep_qpe"
-python experiments/sweep_arithmetic.py && ok "sweep_arithmetic"
-python experiments/sweep_qrom.py       && ok "sweep_qrom"
+python experiments/sweep_qft.py        && ok "sweep_qft"        || fail "sweep_qft"
+python experiments/sweep_qpe.py        && ok "sweep_qpe"        || fail "sweep_qpe"
+python experiments/sweep_arithmetic.py && ok "sweep_arithmetic" || fail "sweep_arithmetic"
+python experiments/sweep_qrom.py       && ok "sweep_qrom"       || fail "sweep_qrom"
 
 python experiments/compare_physical_configs.py qft n=16 variant=textbook \
-&& ok "compare_physical_configs"
+&& ok "compare_physical_configs" || fail "compare_physical_configs"
 
 # Config dump (sanity)
 section "CONFIG"
 
-ftprims dump-config --out "${RESULTS}/default_config.yaml" \
-&& ok "default_config.yaml"
+if ftprims dump-config --out "${RESULTS}/default_config.yaml"; then
+    ok "default_config.yaml"
+else
+    fail "default_config.yaml"
+fi
 
 section "ALL DONE"
 echo "Results in ${RESULTS}/"
 ls -1 "${RESULTS}/"
+
+if [ "$FAIL_COUNT" -gt 0 ]; then
+    echo -e "\n${RED}${FAIL_COUNT} step(s) failed.${NC}"
+    exit 1
+else
+    echo -e "\n${GREEN}All steps passed.${NC}"
+fi

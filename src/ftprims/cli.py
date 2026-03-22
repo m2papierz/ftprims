@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import sys
+import warnings
 from pathlib import Path
 
 import click
@@ -165,6 +167,10 @@ def run(
         result["breakdown"] = [attrs.asdict(item) for item in items]
         result["breakdown_summary"] = summarize_breakdown(items)
 
+        _check_logical_breakdown_consistency(
+            costs.t_count_ftqc, items, primitive, params
+        )
+
     phys_result = None
     if physical:
         from ftprims.physical import PhysicalModelSpec
@@ -220,6 +226,37 @@ def run(
         click.echo(f"Saved => {out}")
 
 
+def _check_logical_breakdown_consistency(
+    logical_ftqc: int,
+    items: tuple,
+    primitive: str,
+    params: dict,
+) -> None:
+    """Warn when breakdown total diverges from logical t_count_ftqc.
+
+    Both values are computed from the same bloq but via different
+    extraction strategies.  A large discrepancy indicates a cost
+    extraction bug.
+    """
+    breakdown_ftqc = sum(item.est_t_ftqc for item in items)
+
+    # Both zero is consistent (e.g. Clifford-only circuits).
+    if logical_ftqc == 0 and breakdown_ftqc == 0:
+        return
+
+    denom = max(logical_ftqc, breakdown_ftqc, 1)
+    relative = abs(logical_ftqc - breakdown_ftqc) / denom
+
+    if relative > 0.10:
+        warnings.warn(
+            f"[{primitive} {params}] logical t_count_ftqc={logical_ftqc:,} vs "
+            f"breakdown total={breakdown_ftqc:,} (delta={relative:.1%}). "
+            f"The two extraction strategies disagree — check resource.py "
+            f"call_graph depth and breakdown depth settings.",
+            stacklevel=2,
+        )
+
+
 @main.command()
 @click.argument("primitive", type=click.Choice(list(registry)))
 @click.option("--param", "-p", multiple=True, help="key=value parameter pairs")
@@ -230,6 +267,9 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
     result = bench.verify_small(**params)
     icons = {"pass": "[OK] PASS", "fail": "[X] FAIL", "skip": "⊘ SKIP"}
     click.echo(f"{icons[result.status]}  {result.detail}")
+
+    if result.status == "fail":
+        sys.exit(1)
 
 
 # Port-size heuristic for QREF export
