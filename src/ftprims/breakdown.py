@@ -37,9 +37,11 @@ COMPONENTS = (
 def classify_component(leaf: Bloq) -> str:
     """Map a leaf Bloq to one of the fixed component categories.
 
-    Classification is based on the module path and class name of the
-    leaf. This is intentionally simple and stable, not a full
-    ontology, but good enough for educational breakdown.
+    Classification uses module path and class name as primary signals,
+    augmented by cost-aware inspection of gate parameters. In
+    particular, parameterised ``*PowGate`` bloqs are classified as
+    ``rotations`` when their exponent is non-Clifford, rather than
+    being lumped into ``controlled_nonclifford`` based on name alone.
     """
     # Unwrap Adjoint to classify the inner bloq.
     if type(leaf).__name__ == "Adjoint" and hasattr(leaf, "subbloq"):
@@ -56,10 +58,13 @@ def classify_component(leaf: Bloq) -> str:
     if ".arithmetic" in mod:
         return "arithmetic_core"
 
-    # Name-based rules for basic gates
+    # Cost-aware: parameterised gates with non-Clifford exponent are
+    # rotations regardless of their name (e.g. CZPowGate(exp=0.3)).
+    if _is_parameterized_rotation(leaf):
+        return "rotations"
+
+    # Known non-Clifford multi-qubit gates (And/Toffoli always cost T).
     if name in ("And", "Toffoli", "CCZ", "CSwap"):
-        return "controlled_nonclifford"
-    if name in ("CZPowGate",):
         return "controlled_nonclifford"
 
     # Rotation gates (by module or name)
@@ -71,6 +76,29 @@ def classify_component(leaf: Bloq) -> str:
         return "clifford_scaffolding"
 
     return "other"
+
+
+# Exponents that correspond to Clifford gates (mod 2).
+_CLIFFORD_EXPONENTS = frozenset({0.0, 0.5, 1.0, 1.5})
+
+
+def _is_parameterized_rotation(bloq: Bloq) -> bool:
+    """True when *bloq* has an ``exponent`` that is not a Clifford angle.
+
+    This catches ``ZPowGate``, ``CZPowGate``, ``XPowGate`` etc. at
+    non-Clifford angles — these are rotations that require synthesis,
+    not cheap Clifford operations.
+    """
+    exponent = getattr(bloq, "exponent", None)
+    if exponent is None:
+        return False
+    try:
+        exp_mod = float(exponent) % 2.0
+        # Small tolerance for floating-point comparison.
+        return not any(abs(exp_mod - c) < 1e-12 for c in _CLIFFORD_EXPONENTS)
+    except (TypeError, ValueError):
+        # Symbolic exponent — conservatively treat as rotation.
+        return True
 
 
 def _default_generalizer(bloq: Bloq) -> Bloq | None:
