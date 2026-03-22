@@ -1,8 +1,9 @@
-"""Sweep QPE precision: m → T-count, qubits.
+"""Sweep QPE precision: m => T-count, qubits, breakdown.
 
 Outputs:
   results/sweep_qpe.csv
   results/chart_qpe_scaling.png
+  results/chart_qpe_breakdown.png
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from ftprims.algorithms import registry
+from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
 
 PRECISIONS = [4, 6, 8, 10, 12]
@@ -24,6 +26,12 @@ def collect(bench) -> list[dict]:
     for m in PRECISIONS:
         bloq = bench.build_bloq(m=m, phi=PHI)
         costs = bench.logical_costs(bloq)
+        items = extract_structural_breakdown(bloq)
+        summary = summarize_breakdown(items)
+
+        def _ftqc(component: str) -> int:
+            return sum(i.est_t_ftqc for i in items if i.component == component)
+
         rows.append(
             {
                 "m": m,
@@ -31,15 +39,17 @@ def collect(bench) -> list[dict]:
                 "logical_qubits_estimate": costs.logical_qubits_estimate,
                 "t_count_direct": costs.t_count_direct,
                 "t_count_ftqc": costs.t_count_ftqc,
-                "raw_t": costs.raw_t,
-                "ccz_count": costs.ccz_count,
-                "clifford_count": costs.clifford_count,
                 "rotation_count": costs.rotation_count,
+                "dominant_component": summary.get("dominant_component", ""),
+                "dominant_share": round(summary.get("dominant_share", 0), 3),
+                "qft_qpe_core_ftqc": _ftqc("qft_qpe_core"),
+                "rotations_ftqc": _ftqc("rotations"),
+                "controlled_nonclifford_ftqc": _ftqc("controlled_nonclifford"),
             }
         )
         print(
             f"m={m:3d}  T_ftqc={costs.t_count_ftqc:>8,}  "
-            f"q={costs.logical_qubits_estimate}  rot={costs.rotation_count}"
+            f"dom={summary.get('dominant_component', '')}"
         )
     return rows
 
@@ -76,6 +86,28 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
     print(f"Saved {path}")
 
 
+def plot_breakdown(rows: list[dict], path: Path) -> None:
+    """Stacked bar: qft_qpe_core vs controlled_nonclifford vs rotations."""
+    ms = [str(r["m"]) for r in rows]
+    qft = [r["qft_qpe_core_ftqc"] for r in rows]
+    ctrl = [r["controlled_nonclifford_ftqc"] for r in rows]
+    rot = [r["rotations_ftqc"] for r in rows]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(ms, qft, label="qft_qpe_core", color="#3498db")
+    ax.bar(ms, ctrl, bottom=qft, label="controlled_nonclifford", color="#e74c3c")
+    bottoms = [q + c for q, c in zip(qft, ctrl)]
+    ax.bar(ms, rot, bottom=bottoms, label="rotations", color="#f39c12")
+    ax.set_xlabel("Precision bits (m)")
+    ax.set_ylabel("Estimated FTQC T-cost")
+    ax.set_title("QPE: Cost Breakdown by Component")
+    ax.legend()
+    ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    print(f"Saved {path}")
+
+
 def main() -> None:
     out_dir = Path("results")
     out_dir.mkdir(exist_ok=True)
@@ -83,6 +115,7 @@ def main() -> None:
     rows = collect(registry["qpe"])
     save_csv(rows, out_dir / "sweep_qpe.csv")
     plot_scaling(rows, out_dir / "chart_qpe_scaling.png")
+    plot_breakdown(rows, out_dir / "chart_qpe_breakdown.png")
 
 
 if __name__ == "__main__":

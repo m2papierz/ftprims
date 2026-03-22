@@ -1,8 +1,9 @@
-"""Sweep arithmetic operations: op × n → T-count, qubits.
+"""Sweep arithmetic operations: op x n => T-count, qubits, breakdown.
 
 Outputs:
   results/sweep_arithmetic.csv
   results/chart_arithmetic_scaling.png
+  results/chart_arithmetic_breakdown.png
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from ftprims.algorithms import registry
+from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
 
 # ModAdd cost extraction is very slow for large n in Qualtran,
@@ -40,6 +42,12 @@ def collect(bench) -> list[dict]:
         for n in bitsizes:
             bloq = bench.build_bloq(n=n, op=op)
             costs = bench.logical_costs(bloq)
+            items = extract_structural_breakdown(bloq)
+            summary = summarize_breakdown(items)
+
+            def _ftqc(component: str) -> int:
+                return sum(i.est_t_ftqc for i in items if i.component == component)
+
             rows.append(
                 {
                     "op": op,
@@ -47,16 +55,17 @@ def collect(bench) -> list[dict]:
                     "logical_qubits_estimate": costs.logical_qubits_estimate,
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
-                    "raw_t": costs.raw_t,
-                    "ccz_count": costs.ccz_count,
-                    "clifford_count": costs.clifford_count,
                     "rotation_count": costs.rotation_count,
+                    "dominant_component": summary.get("dominant_component", ""),
+                    "dominant_share": round(summary.get("dominant_share", 0), 3),
+                    "arithmetic_core_ftqc": _ftqc("arithmetic_core"),
+                    "controlled_nonclifford_ftqc": _ftqc("controlled_nonclifford"),
                 }
             )
             print(
                 f"{op:10s}  n={n:4d}  "
                 f"T_ftqc={costs.t_count_ftqc:>10,}  "
-                f"q={costs.logical_qubits_estimate}"
+                f"dom={summary.get('dominant_component', '')}"
             )
     return rows
 
@@ -97,6 +106,26 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
     print(f"Saved {path}")
 
 
+def plot_breakdown(rows: list[dict], path: Path) -> None:
+    """Stacked bar: arithmetic_core vs controlled_nonclifford for add at various n."""
+    subset = [r for r in rows if r["op"] == "add"]
+    ns = [str(r["n"]) for r in subset]
+    arith = [r["arithmetic_core_ftqc"] for r in subset]
+    ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(ns, arith, label="arithmetic_core", color="#3498db")
+    ax.bar(ns, ctrl, bottom=arith, label="controlled_nonclifford", color="#e74c3c")
+    ax.set_xlabel("Bitsize (n)")
+    ax.set_ylabel("Estimated FTQC T-cost")
+    ax.set_title("Arithmetic (add): Cost Breakdown by Component")
+    ax.legend()
+    ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    print(f"Saved {path}")
+
+
 def main() -> None:
     out_dir = Path("results")
     out_dir.mkdir(exist_ok=True)
@@ -104,6 +133,7 @@ def main() -> None:
     rows = collect(registry["arithmetic"])
     save_csv(rows, out_dir / "sweep_arithmetic.csv")
     plot_scaling(rows, out_dir / "chart_arithmetic_scaling.png")
+    plot_breakdown(rows, out_dir / "chart_arithmetic_breakdown.png")
 
 
 if __name__ == "__main__":

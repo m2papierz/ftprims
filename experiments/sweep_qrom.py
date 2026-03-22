@@ -1,9 +1,10 @@
-"""Sweep QROM parameters: data_size × variant, plus Pareto trade-off for SelectSwapQROM.
+"""Sweep QROM parameters: data_size × variant, plus Pareto trade-off.
 
 Outputs:
   results/sweep_qrom.csv
   results/chart_qrom_scaling.png
   results/chart_qrom_pareto.png
+  results/chart_qrom_breakdown.png
 """
 
 from __future__ import annotations
@@ -15,6 +16,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from ftprims.algorithms import registry
+from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
 
 DATA_SIZES = [16, 32, 64, 128, 256, 512, 1024]
@@ -27,6 +29,12 @@ def collect_scaling(bench) -> list[dict]:
         for variant in ["basic", "selectswap"]:
             bloq = bench.build_bloq(data_size=data_size, variant=variant)
             costs = bench.logical_costs(bloq)
+            items = extract_structural_breakdown(bloq)
+            summary = summarize_breakdown(items)
+
+            def _ftqc(component: str) -> int:
+                return sum(i.est_t_ftqc for i in items if i.component == component)
+
             rows.append(
                 {
                     "data_size": data_size,
@@ -34,16 +42,17 @@ def collect_scaling(bench) -> list[dict]:
                     "logical_qubits_estimate": costs.logical_qubits_estimate,
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
-                    "raw_t": costs.raw_t,
-                    "ccz_count": costs.ccz_count,
-                    "clifford_count": costs.clifford_count,
                     "rotation_count": costs.rotation_count,
+                    "dominant_component": summary.get("dominant_component", ""),
+                    "dominant_share": round(summary.get("dominant_share", 0), 3),
+                    "qrom_core_ftqc": _ftqc("qrom_core"),
+                    "arithmetic_core_ftqc": _ftqc("arithmetic_core"),
                 }
             )
             print(
                 f"N={data_size:5d}  {variant:12s}  "
                 f"T_ftqc={costs.t_count_ftqc:>8,}  "
-                f"q={costs.logical_qubits_estimate}"
+                f"dom={summary.get('dominant_component', '')}"
             )
     return rows
 
@@ -155,6 +164,26 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
     print(f"Saved {path}")
 
 
+def plot_breakdown(rows: list[dict], path: Path) -> None:
+    """Stacked bar: qrom_core vs arithmetic_core for selectswap variant."""
+    subset = [r for r in rows if r["variant"] == "selectswap"]
+    ns = [str(r["data_size"]) for r in subset]
+    qrom = [r["qrom_core_ftqc"] for r in subset]
+    arith = [r["arithmetic_core_ftqc"] for r in subset]
+
+    fig, ax = plt.subplots(figsize=(8, 5))
+    ax.bar(ns, qrom, label="qrom_core", color="#8e44ad")
+    ax.bar(ns, arith, bottom=qrom, label="arithmetic_core", color="#3498db")
+    ax.set_xlabel("Data size (N)")
+    ax.set_ylabel("Estimated FTQC T-cost")
+    ax.set_title("SelectSwapQROM: Cost Breakdown by Component")
+    ax.legend()
+    ax.grid(True, alpha=0.3, axis="y")
+    plt.tight_layout()
+    plt.savefig(path, dpi=150, bbox_inches="tight")
+    print(f"Saved {path}")
+
+
 def main() -> None:
     out_dir = Path("results")
     out_dir.mkdir(exist_ok=True)
@@ -163,6 +192,7 @@ def main() -> None:
     scaling_rows = collect_scaling(bench)
     save_csv(scaling_rows, out_dir / "sweep_qrom.csv")
     plot_scaling(scaling_rows, out_dir / "chart_qrom_scaling.png")
+    plot_breakdown(scaling_rows, out_dir / "chart_qrom_breakdown.png")
 
     pareto_rows = collect_pareto(bench, PARETO_DATA_SIZE)
     plot_pareto(pareto_rows, PARETO_DATA_SIZE, out_dir / "chart_qrom_pareto.png")
