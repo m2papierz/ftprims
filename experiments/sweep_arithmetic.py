@@ -42,7 +42,9 @@ def collect(bench) -> list[dict]:
         for n in bitsizes:
             bloq = bench.build_bloq(n=n, op=op)
             costs = bench.logical_costs(bloq)
-            items = extract_structural_breakdown(bloq)
+            # depth=2 exposes arithmetic sub-components (Add inside
+            # Product/ModAdd) rather than just their leaf And gates.
+            items = extract_structural_breakdown(bloq, depth=2)
             summary = summarize_breakdown(items)
 
             def _ftqc(component: str) -> int:
@@ -107,8 +109,13 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Stacked bar: arithmetic_core vs controlled_nonclifford for add at various n."""
-    subset = [r for r in rows if r["op"] == "add"]
+    """Stacked bar: arithmetic_core vs controlled_nonclifford for mul at various n.
+
+    Product has a richer multi-component structure than Add (which is
+    just And gates at leaf level), making it more informative for
+    breakdown visualisation.
+    """
+    subset = [r for r in rows if r["op"] == "mul"]
     ns = [str(r["n"]) for r in subset]
     arith = [r["arithmetic_core_ftqc"] for r in subset]
     ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
@@ -118,7 +125,7 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
     ax.bar(ns, ctrl, bottom=arith, label="controlled_nonclifford", color="#e74c3c")
     ax.set_xlabel("Bitsize (n)")
     ax.set_ylabel("Estimated FTQC T-cost")
-    ax.set_title("Arithmetic (add): Cost Breakdown by Component")
+    ax.set_title("Arithmetic (mul): Cost Breakdown by Component")
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
