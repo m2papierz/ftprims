@@ -88,8 +88,33 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
         ns = [r["n"] for r in subset]
         ts = [r["t_count_ftqc"] for r in subset]
         qs = [r["logical_qubits_estimate"] for r in subset]
-        ax1.loglog(ns, ts, "o-", color=COLORS[op], linewidth=2, markersize=7, label=op)
-        ax2.loglog(ns, qs, "o-", color=COLORS[op], linewidth=2, markersize=7, label=op)
+
+        # loglog cannot plot zeros — skip ops where all T-counts are zero.
+        ts_positive = [r for r in subset if r["t_count_ftqc"] > 0]
+        if ts_positive:
+            ax1.loglog(
+                [r["n"] for r in ts_positive],
+                [r["t_count_ftqc"] for r in ts_positive],
+                "o-",
+                color=COLORS[op],
+                linewidth=2,
+                markersize=7,
+                label=op,
+            )
+        else:
+            ax1.plot([], [], "o-", color=COLORS[op], label=f"{op} (zero T)")
+
+        qs_positive = [r for r in subset if r["logical_qubits_estimate"] > 0]
+        if qs_positive:
+            ax2.loglog(
+                [r["n"] for r in qs_positive],
+                [r["logical_qubits_estimate"] for r in qs_positive],
+                "o-",
+                color=COLORS[op],
+                linewidth=2,
+                markersize=7,
+                label=op,
+            )
 
     ax1.set_xlabel("Bitsize (n)")
     ax1.set_ylabel("T-count (FTQC)")

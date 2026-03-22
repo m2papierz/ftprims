@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 
 from ftprims.algorithms import registry
 from ftprims.physical import PhysicalModelSpec, estimate_physical
@@ -38,6 +39,20 @@ PRESETS: list[dict[str, str]] = [
     {"profile": "beverland", "data_block": "simple", "factory": "fifteen_to_one"},
     {"profile": "beverland", "data_block": "fast", "factory": "fifteen_to_one"},
 ]
+
+# Short labels for chart annotations: "profile data_block factory"
+# abbreviated to single letters where possible.
+_PROFILE_SHORT = {"gidney_fowler": "GF", "beverland": "Bev"}
+_BLOCK_SHORT = {"simple": "S", "compact": "C", "fast": "F"}
+_FACTORY_SHORT = {"ccz2t": "ccz2t", "fifteen_to_one": "15→1"}
+
+
+def _short_label(r: dict) -> str:
+    return (
+        f"{_PROFILE_SHORT.get(r['profile'], r['profile'])}/"
+        f"{_BLOCK_SHORT.get(r['data_block'], r['data_block'])}/"
+        f"{_FACTORY_SHORT.get(r['factory'], r['factory'])}"
+    )
 
 
 def _parse_params(args: list[str]) -> dict[str, int | float | str]:
@@ -96,9 +111,9 @@ def save_csv(rows: list[dict], path: Path) -> None:
 
 
 def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(11, 7))
 
-    for r in rows:
+    for idx, r in enumerate(rows):
         color = "#2ecc71" if r["budget_satisfied"] else "#e74c3c"
         marker = "o" if r["factory"] == "ccz2t" else "^"
         ax.scatter(
@@ -106,17 +121,19 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             r["wall_time_us"],
             c=color,
             marker=marker,
-            s=120,
+            s=140,
             edgecolors="black",
             linewidths=0.5,
             zorder=3,
         )
+        # Indexed label — compact, no overlap.
         ax.annotate(
-            r["label"].replace("/", "\n"),
+            str(idx + 1),
             (r["physical_qubits"], r["wall_time_us"]),
             textcoords="offset points",
-            xytext=(8, 4),
-            fontsize=6,
+            xytext=(6, 6),
+            fontsize=8,
+            fontweight="bold",
         )
 
     ax.set_xlabel("Physical qubits")
@@ -124,9 +141,7 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
     ax.set_title(f"Physical Config Comparison: {primitive}")
     ax.grid(True, alpha=0.3)
 
-    # Legend entries
-    from matplotlib.lines import Line2D
-
+    # Legend: shape/color semantics.
     legend_elements = [
         Line2D(
             [0],
@@ -169,7 +184,29 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             label="fifteen_to_one",
         ),
     ]
-    ax.legend(handles=legend_elements, fontsize=8)
+    ax.legend(handles=legend_elements, fontsize=8, loc="upper left")
+
+    # Table below chart: index → config label + key numbers.
+    table_lines = []
+    for idx, r in enumerate(rows):
+        short = _short_label(r)
+        ok = "✓" if r["budget_satisfied"] else "✗"
+        table_lines.append(
+            f"  {idx + 1:2d}. {short:18s}  "
+            f"q={r['physical_qubits']:>9,}  "
+            f"t={r['wall_time_us']:>12,.0f}µs  "
+            f"d={r['code_distance']}  {ok}"
+        )
+
+    table_text = "\n".join(table_lines)
+    fig.text(
+        0.05,
+        -0.02,
+        table_text,
+        fontsize=7,
+        fontfamily="monospace",
+        verticalalignment="top",
+    )
 
     plt.tight_layout()
     plt.savefig(path, dpi=150, bbox_inches="tight")

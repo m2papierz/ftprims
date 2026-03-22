@@ -47,6 +47,7 @@ def collect_scaling(bench) -> list[dict]:
                     "dominant_share": round(summary.get("dominant_share", 0), 3),
                     "qrom_core_ftqc": _ftqc("qrom_core"),
                     "arithmetic_core_ftqc": _ftqc("arithmetic_core"),
+                    "controlled_nonclifford_ftqc": _ftqc("controlled_nonclifford"),
                 }
             )
             print(
@@ -165,15 +166,18 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Stacked bar: qrom_core vs arithmetic_core for selectswap variant."""
+    """Stacked bar: all cost components for selectswap variant."""
     subset = [r for r in rows if r["variant"] == "selectswap"]
     ns = [str(r["data_size"]) for r in subset]
     qrom = [r["qrom_core_ftqc"] for r in subset]
     arith = [r["arithmetic_core_ftqc"] for r in subset]
+    ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
 
     fig, ax = plt.subplots(figsize=(8, 5))
     ax.bar(ns, qrom, label="qrom_core", color="#8e44ad")
     ax.bar(ns, arith, bottom=qrom, label="arithmetic_core", color="#3498db")
+    bottoms2 = [q + a for q, a in zip(qrom, arith)]
+    ax.bar(ns, ctrl, bottom=bottoms2, label="controlled_nonclifford", color="#e74c3c")
     ax.set_xlabel("Data size (N)")
     ax.set_ylabel("Estimated FTQC T-cost")
     ax.set_title("SelectSwapQROM: Cost Breakdown by Component")
