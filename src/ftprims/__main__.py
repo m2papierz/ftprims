@@ -4,7 +4,7 @@ from __future__ import annotations
 
 
 def main() -> None:
-    """Run the ``devqubit`` CLI."""
+    """Run the ftprims CLI."""
     from ftprims.cli import main as cli_main
 
     cli_main()
