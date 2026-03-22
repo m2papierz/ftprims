@@ -123,14 +123,14 @@ class QPEBenchmark(Benchmark):
 
         bloq = self.build_bloq(m=m, phi=phi)
 
-        # Build circuit with register map
+        # Build circuit with register map - fall back to tensor_contract
+        # if Cirq circuit construction fails (some Qualtran versions
+        # raise errors on register name collisions).
         try:
             cbloq = bloq.decompose_bloq()
             circuit, quregs = cbloq.to_cirq_circuit_and_quregs()
-        except Exception as exc:
-            return VerificationResult(
-                status="fail", detail=f"Circuit construction failed: {exc}"
-            )
+        except Exception:
+            return self._verify_via_tensor(bloq, m=m, phi=phi)
 
         # Identify registers from quregs map by name.
         # TextbookQPE signature: qpe_reg (m qubits) + unitary target register(s).
@@ -203,5 +203,55 @@ class QPEBenchmark(Benchmark):
             detail=(
                 f"QPE(m={m}, phi={phi}): register={qpe_val}, "
                 f"estimated_phi={estimated_phi:.6f}, prob={probs[best]:.4f}"
+            ),
+        )
+
+    @staticmethod
+    def _verify_via_tensor(bloq: Bloq, *, m: int, phi: float) -> VerificationResult:
+        """Fallback QPE verification using tensor_contract().
+
+        Used when Cirq circuit construction fails. Applies the QPE
+        unitary and checks that the QPE register encodes the expected phase.
+        """
+        try:
+            U = bloq.tensor_contract()
+        except Exception as exc:
+            return VerificationResult(
+                status="fail",
+                detail=f"tensor_contract failed: {exc}",
+            )
+
+        dim = U.shape[0]
+        n_total = int(round(np.log2(dim)))
+        n_target = n_total - m  # remaining qubits are target
+
+        # Initial state: QPE register |0...0⟩, target |1⟩ (LSBs).
+        initial = np.zeros(dim, dtype=complex)
+        initial[1] = 1.0  # |0...01⟩
+
+        final = U @ initial
+        probs = np.abs(final) ** 2
+        best_idx = int(np.argmax(probs))
+        qpe_val = best_idx >> n_target
+        estimated_phi = qpe_val / (1 << m)
+
+        expected_val = round(phi * (1 << m))
+
+        if qpe_val != expected_val:
+            return VerificationResult(
+                status="fail",
+                detail=(
+                    f"Phase mismatch (tensor fallback): qpe_reg={qpe_val} "
+                    f"(phi={estimated_phi:.6f}), expected={expected_val}, "
+                    f"prob={probs[best_idx]:.4f}"
+                ),
+            )
+
+        return VerificationResult(
+            status="pass",
+            detail=(
+                f"QPE(m={m}, phi={phi}): register={qpe_val}, "
+                f"phi={estimated_phi:.6f}, prob={probs[best_idx]:.4f} "
+                f"(tensor fallback)"
             ),
         )
