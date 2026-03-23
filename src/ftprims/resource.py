@@ -33,15 +33,20 @@ from ftprims.config import DEFAULT_CONFIG, SurfaceCodeConfig
 def rotation_synthesis_t_cost(epsilon: float) -> int:
     """T-gates needed to synthesise one arbitrary rotation to precision *ε*.
 
-    Uses the Ross-Selinger / Gridsynth approximation:
+    Uses the Ross-Selinger / Gridsynth approximation for ancilla-free
+    Clifford+T synthesis:
 
-        T ≈ 1.149·log₂(1/ε) + 9.2
+        T ≈ 3·log₂(1/ε)
+
+    This is the dominant term from Theorem 1.1 of Ross & Selinger
+    (arXiv:1403.2975). The full bound is 3·log₂(1/ε) + O(log log(1/ε));
+    the sub-leading term is omitted here.
 
     Returns 0 when *epsilon* is non-positive (meaning "skip synthesis").
     """
     if epsilon <= 0:
         return 0
-    return math.ceil(1.149 * math.log2(1.0 / epsilon) + 9.2)
+    return math.ceil(3.0 * math.log2(1.0 / epsilon))
 
 
 _CALL_GRAPH_MAX_DEPTH = 4
@@ -65,7 +70,7 @@ def _leaf_gate_costs(leaf: Bloq) -> tuple[int, int, int, int]:
     """Return ``(raw_t, and_count, rotations, cliffords)`` for a leaf.
 
     Checks hardcoded overrides first, then falls back to
-    ``QECGatesCost``.  Returns all zeros on failure.
+    ``QECGatesCost``. Returns all zeros on failure.
     """
     override = _COST_OVERRIDES.get(type(leaf).__name__)
     if override is not None:
@@ -183,8 +188,8 @@ def extract_logical_costs(
     bloq:
         The bloq to analyse.
     rotation_synthesis_epsilon:
-        Precision for rotation synthesis.  When ``None`` the default
-        from ``DEFAULT_CONFIG`` is used.  Pass ``0`` or a negative
+        Precision for rotation synthesis. When ``None`` the default
+        from ``DEFAULT_CONFIG`` is used. Pass ``0`` or a negative
         value to skip synthesis costing entirely.
     """
     if rotation_synthesis_epsilon is None:
@@ -223,7 +228,7 @@ def estimate_physical(
 ) -> PhysicalCosts:
     """Estimate physical costs using the surface-code model.
 
-    This is a backward-compatible wrapper.  For full control over
+    This is a backward-compatible wrapper. For full control over
     profile, data block, and factory variants, use
     ``ftprims.physical.estimate_physical`` with a ``PhysicalModelSpec``.
 
