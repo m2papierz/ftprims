@@ -145,7 +145,22 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
     ts = [r["t_count_ftqc"] for r in rows]
     ks = [r["k"] for r in rows]
 
-    ax.plot(qs, ts, "o-", color="#8e44ad", linewidth=2, markersize=10)
+    # Compute actual Pareto frontier: keep only non-dominated points.
+    # A point is dominated if another point has both fewer qubits AND fewer T-gates.
+    frontier_idx = []
+    for i in range(len(qs)):
+        dominated = False
+        for j in range(len(qs)):
+            if i == j:
+                continue
+            if qs[j] <= qs[i] and ts[j] <= ts[i] and (qs[j] < qs[i] or ts[j] < ts[i]):
+                dominated = True
+                break
+        if not dominated:
+            frontier_idx.append(i)
+
+    # Plot all points as light markers.
+    ax.plot(qs, ts, "o", color="#d5d5d5", markersize=8, zorder=1)
     for q, t, k in zip(qs, ts, ks):
         ax.annotate(
             f"k={k}",
@@ -153,11 +168,29 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
             textcoords="offset points",
             xytext=(8, 4),
             fontsize=9,
+            color="#999999",
         )
 
-    ax.set_xlabel("Logical qubits (ancilla)")
+    # Highlight Pareto-optimal points.
+    frontier = sorted(frontier_idx, key=lambda i: qs[i])
+    fq = [qs[i] for i in frontier]
+    ft = [ts[i] for i in frontier]
+    fk = [ks[i] for i in frontier]
+    ax.plot(fq, ft, "o-", color="#8e44ad", linewidth=2, markersize=10, zorder=2)
+    for q, t, k in zip(fq, ft, fk):
+        ax.annotate(
+            f"k={k}",
+            (q, t),
+            textcoords="offset points",
+            xytext=(8, 4),
+            fontsize=9,
+            fontweight="bold",
+            color="#8e44ad",
+        )
+
+    ax.set_xlabel("Total logical qubits")
     ax.set_ylabel("T-count (FTQC)")
-    ax.set_title(f"SelectSwapQROM Pareto: T-gates vs Qubits (N={data_size})")
+    ax.set_title(f"SelectSwapQROM: T-gates vs Qubits Pareto Frontier (N={data_size})")
     ax.grid(True, alpha=0.3)
 
     plt.tight_layout()

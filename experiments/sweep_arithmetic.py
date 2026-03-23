@@ -132,23 +132,29 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Stacked bar: arithmetic_core vs controlled_nonclifford for mul at various n.
+    """Grouped bar: all ops at n=16 showing arithmetic_core vs controlled_nonclifford.
 
-    Product has a richer multi-component structure than Add (which is
-    just And gates at leaf level), making it more informative for
-    breakdown visualisation.
+    A single bitsize lets the reader compare structural composition across operations.
+    n=16 is used because all ops (including modadd) are present at this size.
     """
-    subset = [r for r in rows if r["op"] == "mul"]
-    ns = [str(r["n"]) for r in subset]
+    target_n = 16
+    subset = [r for r in rows if r["n"] == target_n]
+    if not subset:
+        # Fallback to smallest common n.
+        all_ns = sorted({r["n"] for r in rows})
+        target_n = all_ns[0]
+        subset = [r for r in rows if r["n"] == target_n]
+
+    ops = [r["op"] for r in subset]
     arith = [r["arithmetic_core_ftqc"] for r in subset]
     ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
 
     fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(ns, arith, label="arithmetic_core", color="#3498db")
-    ax.bar(ns, ctrl, bottom=arith, label="controlled_nonclifford", color="#e74c3c")
-    ax.set_xlabel("Bitsize (n)")
+    ax.bar(ops, arith, label="arithmetic_core", color="#3498db")
+    ax.bar(ops, ctrl, bottom=arith, label="controlled_nonclifford", color="#e74c3c")
+    ax.set_xlabel("Operation")
     ax.set_ylabel("Estimated FTQC T-cost")
-    ax.set_title("Arithmetic (mul): Cost Breakdown by Component")
+    ax.set_title(f"Arithmetic Breakdown by Operation (n={target_n})")
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()

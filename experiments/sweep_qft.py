@@ -143,20 +143,52 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Stacked bar: rotations vs clifford_scaffolding for textbook QFT."""
+    """Two-panel breakdown for textbook QFT: T-cost (left) and Clifford count (right).
+
+    Cliffords have zero T-cost by definition, so stacking them on a
+    T-cost axis is misleading. Instead, show them on their own axis.
+    """
     subset = [r for r in rows if r["variant"] == "textbook"]
     ns = [str(r["n"]) for r in subset]
-    rot = [r["rotations_ftqc"] for r in subset]
-    cliff = [r["clifford_scaffolding_ftqc"] for r in subset]
+    rot_ftqc = [r["rotations_ftqc"] for r in subset]
+    rot_count = [r["rotation_count"] for r in subset]
+    cliff_count = [r["clifford_count"] for r in subset]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(ns, rot, label="rotations", color="#e74c3c")
-    ax.bar(ns, cliff, bottom=rot, label="clifford_scaffolding", color="#95a5a6")
-    ax.set_xlabel("Bitsize (n)")
-    ax.set_ylabel("Estimated FTQC T-cost")
-    ax.set_title("QFT Textbook: Cost Breakdown by Component")
-    ax.legend()
-    ax.grid(True, alpha=0.3, axis="y")
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+
+    ax1.bar(ns, rot_ftqc, label="rotations (synthesised T-cost)", color="#e74c3c")
+    ax1.set_xlabel("Bitsize (n)")
+    ax1.set_ylabel("Estimated FTQC T-cost")
+    ax1.set_title("QFT Textbook: Non-Clifford Cost")
+    ax1.legend()
+    ax1.grid(True, alpha=0.3, axis="y")
+
+    x = range(len(ns))
+    w = 0.35
+    ax2.bar(
+        [i - w / 2 for i in x],
+        rot_count,
+        w,
+        label="rotation gates",
+        color="#e74c3c",
+        alpha=0.8,
+    )
+    ax2.bar(
+        [i + w / 2 for i in x],
+        cliff_count,
+        w,
+        label="Clifford gates",
+        color="#95a5a6",
+        alpha=0.8,
+    )
+    ax2.set_xticks(list(x))
+    ax2.set_xticklabels(ns)
+    ax2.set_xlabel("Bitsize (n)")
+    ax2.set_ylabel("Gate count")
+    ax2.set_title("QFT Textbook: Gate Counts by Type")
+    ax2.legend()
+    ax2.grid(True, alpha=0.3, axis="y")
+
     plt.tight_layout()
     plt.savefig(path, dpi=150, bbox_inches="tight")
     print(f"Saved {path}")
