@@ -22,7 +22,7 @@ def _load_config(path: str | None) -> FTPrimsConfig:
 @click.group()
 @click.version_option(package_name="ftprims")
 def main() -> None:
-    """ftprims — FTQC primitives benchmark suite."""
+    """ftprims - FTQC primitives benchmark suite."""
 
 
 @main.command()
@@ -328,7 +328,7 @@ def export_qref(
     bench = registry[primitive]
     params = _parse_params(param)
 
-    # Always build the bloq and compute numeric costs — needed for
+    # Always build the bloq and compute numeric costs - needed for
     # numeric mode directly, and for --check in symbolic mode.
     need_numeric = (not symbolic) or check
     numeric_costs = None
@@ -373,10 +373,13 @@ def export_qref(
     if check and symbolic and numeric_costs is not None:
         from ftprims.export import check_symbolic_consistency
 
+        _SYMBOLIC_ERROR_THRESHOLD = 0.20  # 20% - fail above this
+
         report = check_symbolic_consistency(primitive, params, numeric_costs)
         if not report.get("available"):
             click.echo(f"  Check skipped: {report.get('reason', 'unknown')}")
         else:
+            max_rel = report.get("max_relative_error", 0.0)
             ok = "[OK] consistent" if report["consistent"] else "[X] DIVERGENT"
             click.echo(f"\n  Symbolic <===> Numeric consistency: {ok}")
             for field, comp in report["comparisons"].items():
@@ -391,6 +394,14 @@ def export_qref(
                     f"    {icon} {field:20s}  "
                     f"symbolic={sym:>10,}  numeric={num:>10,}{rel_str}"
                 )
+
+            if max_rel > _SYMBOLIC_ERROR_THRESHOLD:
+                click.echo(
+                    f"\n  [!] Max relative error {max_rel:.1%} exceeds "
+                    f"threshold {_SYMBOLIC_ERROR_THRESHOLD:.0%}. "
+                    f"Symbolic export is unreliable at these parameters."
+                )
+                sys.exit(1)
 
 
 @main.command()

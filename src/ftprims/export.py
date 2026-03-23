@@ -393,8 +393,15 @@ def check_symbolic_consistency(
         if c.get("match") is not None
     )
 
+    max_rel = max(
+        (c.get("relative_error") or 0.0)
+        for c in comparisons.values()
+        if c.get("match") is not None
+    )
+
     return {
         "available": True,
         "consistent": all_match,
+        "max_relative_error": round(max_rel, 4),
         "comparisons": comparisons,
     }
