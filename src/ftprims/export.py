@@ -98,15 +98,16 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
         },
     },
     # -- Arithmetic --
-    # Qualtran's Add(n) uses n-1 And gates plus a few raw T-gates.
-    # Dominant term: 4*(n-1) T from And gates ≈ 4*n.
+    # Qualtran's Add(n) uses n-1 And gates (each costing 4 T-gates),
+    # plus ancilla qubits for the And gate outputs.
+    # Qubits: 2 input registers (2*n) + n-1 And ancillas = 3*n - 1.
     ("arithmetic", "add"): {
         "required_params": ["n"],
         "resources": {
             "T_gates_direct": "4*(n - 1)",
             "rotations": "0",
             "cliffords": "8*n",
-            "n_qubits": "2*n",
+            "n_qubits": "3*n - 1",
         },
     },
     ("arithmetic", "add_oop"): {
@@ -129,12 +130,13 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
     },
     # Product(n, n) decomposes into n*(2n-1) And gates via
     # schoolbook multiplication.  T_direct = 4 * n*(2n-1).
+    # Qualtran's QECGatesCost reports 0 Cliffords at this level.
     ("arithmetic", "mul"): {
         "required_params": ["n"],
         "resources": {
             "T_gates_direct": "4*n*(2*n - 1)",
             "rotations": "0",
-            "cliffords": "8*n*(2*n - 1)",
+            "cliffords": "0",
             "n_qubits": "4*n",
         },
     },
