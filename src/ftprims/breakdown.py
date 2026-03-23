@@ -4,6 +4,13 @@ Decomposes a Bloq into a small set of component categories and
 reports per-category T-gate, rotation, and Clifford counts. This
 gives visibility into where the cost comes from rather than just
 a single aggregate number.
+
+Structural classification is always performed at depth=1 (the
+bloq's immediate children) so that component labels are stable
+regardless of how deep the gate-cost extraction goes. Gate costs
+for each structural child are extracted via ``QECGatesCost``, which
+internally decomposes as deep as necessary, this decouples "where
+in the algorithm" from "what gates it costs".
 """
 
 from __future__ import annotations
@@ -11,10 +18,12 @@ from __future__ import annotations
 from collections import defaultdict
 
 from qualtran import Bloq
+from qualtran.resource_counting import QECGatesCost, get_cost_value
 
 from ftprims.algorithms._base import BreakdownItem
 from ftprims.resource import (
     _default_generalizer,
+    _extract_via_call_graph,
     _leaf_gate_costs,
     rotation_synthesis_t_cost,
 )
@@ -99,21 +108,57 @@ def _is_parameterized_rotation(bloq: Bloq) -> bool:
         return True
 
 
+def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
+    """Return ``(raw_t, and_count, rotations, cliffords)`` for a structural child.
+
+    Tries ``QECGatesCost`` first — it handles internal decomposition
+    so that a composite bloq like ``Add`` returns its full gate cost
+    without the caller needing to choose a depth.  Falls back to
+    call-graph leaf aggregation, then to single-leaf extraction.
+    """
+    # Strategy 1: QECGatesCost on the child (handles composites).
+    try:
+        gates = get_cost_value(child, QECGatesCost())
+        vals = (
+            int(gates.t),
+            int(gates.and_bloq),
+            int(gates.rotation),
+            int(gates.clifford),
+        )
+        if sum(vals) > 0:
+            return vals
+    except Exception:
+        pass
+
+    # Strategy 2: call_graph leaf aggregation.
+    try:
+        vals = _extract_via_call_graph(child)
+        if sum(vals) > 0:
+            return vals
+    except Exception:
+        pass
+
+    # Strategy 3: treat as a single leaf.
+    return _leaf_gate_costs(child)
+
+
 def extract_structural_breakdown(
     bloq: Bloq,
     *,
-    depth: int = 1,
     rotation_eps: float = 1e-10,
 ) -> tuple[BreakdownItem, ...]:
     """Break a Bloq into component categories with per-category costs.
+
+    Structural classification is always done at ``max_depth=1``
+    (immediate children) so that component labels are stable.  Gate
+    costs for each child are extracted via ``QECGatesCost`` which
+    internally decomposes as deep as needed — this decouples the
+    structural "where" from the gate-level "what".
 
     Parameters
     ----------
     bloq:
         The Bloq to analyse.
-    depth:
-        ``max_depth`` passed to ``call_graph``. 1 gives the top-level
-        decomposition; higher values drill deeper.
     rotation_eps:
         Precision for rotation synthesis T-cost estimation.
 
@@ -125,7 +170,7 @@ def extract_structural_breakdown(
     """
     _, sigma = bloq.call_graph(
         generalizer=_default_generalizer,
-        max_depth=depth,
+        max_depth=1,
     )
 
     # Accumulate per-category totals.
@@ -140,19 +185,19 @@ def extract_structural_breakdown(
 
     t_per_rot = rotation_synthesis_t_cost(rotation_eps)
 
-    for leaf, count in sigma.items():
+    for child, count in sigma.items():
         count = int(count)
-        category = classify_component(leaf)
+        category = classify_component(child)
 
-        # Extract per-leaf gate costs.
-        raw_t, and_count, leaf_rotations, leaf_cliffords = _leaf_gate_costs(leaf)
-        leaf_direct_t = raw_t + 4 * and_count
+        # Extract full gate costs for this child.
+        raw_t, and_count, child_rotations, child_cliffords = _child_gate_costs(child)
+        child_direct_t = raw_t + 4 * and_count
 
         bucket = acc[category]
         bucket["invocations"] += count
-        bucket["direct_t"] += count * leaf_direct_t
-        bucket["clifford_count"] += count * leaf_cliffords
-        bucket["rotation_count"] += count * leaf_rotations
+        bucket["direct_t"] += count * child_direct_t
+        bucket["clifford_count"] += count * child_cliffords
+        bucket["rotation_count"] += count * child_rotations
 
     # Build items with estimated FTQC cost.
     items: list[BreakdownItem] = []

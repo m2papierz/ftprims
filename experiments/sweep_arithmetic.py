@@ -42,9 +42,7 @@ def collect(bench) -> list[dict]:
         for n in bitsizes:
             bloq = bench.build_bloq(n=n, op=op)
             costs = bench.logical_costs(bloq)
-            # depth=2 exposes arithmetic sub-components (Add inside
-            # Product/ModAdd) rather than just their leaf And gates.
-            items = extract_structural_breakdown(bloq, depth=2)
+            items = extract_structural_breakdown(bloq)
             summary = summarize_breakdown(items)
 
             def _ftqc(component: str) -> int:

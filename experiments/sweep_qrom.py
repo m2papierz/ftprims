@@ -1,4 +1,4 @@
-"""Sweep QROM parameters: data_size × variant, plus Pareto trade-off.
+"""Sweep QROM parameters: data_size x variant, plus Pareto trade-off.
 
 Outputs:
   results/sweep_qrom.csv
@@ -29,7 +29,7 @@ def collect_scaling(bench) -> list[dict]:
         for variant in ["basic", "selectswap"]:
             bloq = bench.build_bloq(data_size=data_size, variant=variant)
             costs = bench.logical_costs(bloq)
-            items = extract_structural_breakdown(bloq, depth=2)
+            items = extract_structural_breakdown(bloq)
             summary = summarize_breakdown(items)
 
             def _ftqc(component: str) -> int:

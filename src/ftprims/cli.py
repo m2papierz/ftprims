@@ -1,4 +1,4 @@
-"""ftprims CLI — run benchmarks, verify, export QREF, compile with Bartiq."""
+"""ftprims CLI: run benchmarks, verify, export QREF, compile with Bartiq."""
 
 from __future__ import annotations
 
@@ -73,13 +73,6 @@ def main() -> None:
 )
 @click.option("--breakdown", is_flag=True, help="Include structural cost breakdown")
 @click.option(
-    "--breakdown-depth",
-    type=int,
-    default=1,
-    show_default=True,
-    help="call_graph max_depth",
-)
-@click.option(
     "--rotation-eps",
     type=float,
     default=None,
@@ -103,7 +96,6 @@ def run(
     physical_error: float | None,
     cycle_time_us: float | None,
     breakdown: bool,
-    breakdown_depth: int,
     rotation_eps: float | None,
     explain: bool,
     explain_json: bool,
@@ -160,7 +152,6 @@ def run(
 
         items = extract_structural_breakdown(
             bloq,
-            depth=breakdown_depth,
             rotation_eps=eps,
         )
         breakdown_items = items
@@ -235,7 +226,7 @@ def _check_logical_breakdown_consistency(
     """Warn when breakdown total diverges from logical t_count_ftqc.
 
     Both values are computed from the same bloq but via different
-    extraction strategies.  A large discrepancy indicates a cost
+    extraction strategies. A large discrepancy indicates a cost
     extraction bug.
     """
     breakdown_ftqc = sum(item.est_t_ftqc for item in items)
@@ -251,8 +242,8 @@ def _check_logical_breakdown_consistency(
         warnings.warn(
             f"[{primitive} {params}] logical t_count_ftqc={logical_ftqc:,} vs "
             f"breakdown total={breakdown_ftqc:,} (delta={relative:.1%}). "
-            f"The two extraction strategies disagree — check resource.py "
-            f"call_graph depth and breakdown depth settings.",
+            f"The two extraction strategies disagree - check resource.py "
+            f"and breakdown.py cost extraction paths.",
             stacklevel=2,
         )
 
