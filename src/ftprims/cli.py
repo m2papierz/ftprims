@@ -256,7 +256,7 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
     bench = registry[primitive]
     params = _parse_params(param)
     result = bench.verify_small(**params)
-    icons = {"pass": "[OK] PASS", "fail": "[X] FAIL", "skip": "⊘ SKIP"}
+    icons = {"pass": "[OK] PASS", "fail": "[X] FAIL", "skip": "[-] SKIP"}
     click.echo(f"{icons[result.status]}  {result.detail}")
 
     if result.status == "fail":
