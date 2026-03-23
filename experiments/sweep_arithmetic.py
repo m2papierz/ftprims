@@ -56,6 +56,7 @@ def collect(bench) -> list[dict]:
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
                     "rotation_count": costs.rotation_count,
+                    "clifford_count": costs.clifford_count,
                     "dominant_component": summary.get("dominant_component", ""),
                     "dominant_share": round(summary.get("dominant_share", 0), 3),
                     "arithmetic_core_ftqc": _ftqc("arithmetic_core"),
@@ -132,29 +133,33 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Grouped bar: all ops at n=16 showing arithmetic_core vs controlled_nonclifford.
-
-    A single bitsize lets the reader compare structural composition across operations.
-    n=16 is used because all ops (including modadd) are present at this size.
-    """
+    """Grouped bar: gate-type breakdown (T-direct, Cliffords) per op at n=16."""
     target_n = 16
     subset = [r for r in rows if r["n"] == target_n]
     if not subset:
-        # Fallback to smallest common n.
         all_ns = sorted({r["n"] for r in rows})
         target_n = all_ns[0]
         subset = [r for r in rows if r["n"] == target_n]
 
     ops = [r["op"] for r in subset]
-    arith = [r["arithmetic_core_ftqc"] for r in subset]
-    ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
+    t_direct = [r["t_count_direct"] for r in subset]
+    cliffords = [r["clifford_count"] for r in subset]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(ops, arith, label="arithmetic_core", color="#3498db")
-    ax.bar(ops, ctrl, bottom=arith, label="controlled_nonclifford", color="#e74c3c")
+    x = range(len(ops))
+    w = 0.35
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.bar(
+        [i - w / 2 for i in x], t_direct, w, label="T-gates (direct)", color="#e74c3c"
+    )
+    ax.bar(
+        [i + w / 2 for i in x], cliffords, w, label="Clifford gates", color="#95a5a6"
+    )
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(ops)
     ax.set_xlabel("Operation")
-    ax.set_ylabel("Estimated FTQC T-cost")
-    ax.set_title(f"Arithmetic Breakdown by Operation (n={target_n})")
+    ax.set_ylabel("Gate count")
+    ax.set_title(f"Arithmetic: Gate-Type Breakdown (n={target_n})")
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()

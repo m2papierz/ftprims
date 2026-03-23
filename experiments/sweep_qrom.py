@@ -43,6 +43,7 @@ def collect_scaling(bench) -> list[dict]:
                     "t_count_direct": costs.t_count_direct,
                     "t_count_ftqc": costs.t_count_ftqc,
                     "rotation_count": costs.rotation_count,
+                    "clifford_count": costs.clifford_count,
                     "dominant_component": summary.get("dominant_component", ""),
                     "dominant_share": round(summary.get("dominant_share", 0), 3),
                     "qrom_core_ftqc": _ftqc("qrom_core"),
@@ -199,21 +200,27 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Stacked bar: all cost components for selectswap variant."""
+    """Grouped bar: gate-type breakdown (T-direct, Cliffords) for selectswap."""
     subset = [r for r in rows if r["variant"] == "selectswap"]
     ns = [str(r["data_size"]) for r in subset]
-    qrom = [r["qrom_core_ftqc"] for r in subset]
-    arith = [r["arithmetic_core_ftqc"] for r in subset]
-    ctrl = [r["controlled_nonclifford_ftqc"] for r in subset]
+    t_direct = [r["t_count_direct"] for r in subset]
+    cliffords = [r["clifford_count"] for r in subset]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(ns, qrom, label="qrom_core", color="#8e44ad")
-    ax.bar(ns, arith, bottom=qrom, label="arithmetic_core", color="#3498db")
-    bottoms2 = [q + a for q, a in zip(qrom, arith)]
-    ax.bar(ns, ctrl, bottom=bottoms2, label="controlled_nonclifford", color="#e74c3c")
+    x = range(len(ns))
+    w = 0.35
+
+    fig, ax = plt.subplots(figsize=(9, 5))
+    ax.bar(
+        [i - w / 2 for i in x], t_direct, w, label="T-gates (direct)", color="#e74c3c"
+    )
+    ax.bar(
+        [i + w / 2 for i in x], cliffords, w, label="Clifford gates", color="#95a5a6"
+    )
+    ax.set_xticks(list(x))
+    ax.set_xticklabels(ns)
     ax.set_xlabel("Data size (N)")
-    ax.set_ylabel("Estimated FTQC T-cost")
-    ax.set_title("SelectSwapQROM: Cost Breakdown by Component")
+    ax.set_ylabel("Gate count")
+    ax.set_title("SelectSwapQROM: Gate-Type Breakdown")
     ax.legend()
     ax.grid(True, alpha=0.3, axis="y")
     plt.tight_layout()
