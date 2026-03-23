@@ -111,7 +111,12 @@ def save_csv(rows: list[dict], path: Path) -> None:
 
 
 def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
-    fig, ax = plt.subplots(figsize=(11, 7))
+    fig, (ax, ax_tab) = plt.subplots(
+        2,
+        1,
+        figsize=(11, 9),
+        gridspec_kw={"height_ratios": [3, 1]},
+    )
 
     for idx, r in enumerate(rows):
         color = "#2ecc71" if r["budget_satisfied"] else "#e74c3c"
@@ -126,7 +131,6 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             linewidths=0.5,
             zorder=3,
         )
-        # Indexed label — compact, no overlap.
         ax.annotate(
             str(idx + 1),
             (r["physical_qubits"], r["wall_time_us"]),
@@ -141,7 +145,6 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
     ax.set_title(f"Physical Config Comparison: {primitive}")
     ax.grid(True, alpha=0.3)
 
-    # Legend: shape/color semantics.
     legend_elements = [
         Line2D(
             [0],
@@ -186,27 +189,39 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
     ]
     ax.legend(handles=legend_elements, fontsize=8, loc="upper left")
 
-    # Table below chart: index → config label + key numbers.
-    table_lines = []
+    # Config table as a proper subplot.
+    ax_tab.axis("off")
+    col_labels = ["#", "Config", "Phys. qubits", "Wall time (µs)", "d", "Budget"]
+    table_data = []
     for idx, r in enumerate(rows):
         short = _short_label(r)
-        ok = "✓" if r["budget_satisfied"] else "✗"
-        table_lines.append(
-            f"  {idx + 1:2d}. {short:18s}  "
-            f"q={r['physical_qubits']:>9,}  "
-            f"t={r['wall_time_us']:>12,.0f}µs  "
-            f"d={r['code_distance']}  {ok}"
+        ok = "yes" if r["budget_satisfied"] else "NO"
+        table_data.append(
+            [
+                str(idx + 1),
+                short,
+                f"{r['physical_qubits']:,}",
+                f"{r['wall_time_us']:,.0f}",
+                str(r["code_distance"]),
+                ok,
+            ]
         )
 
-    table_text = "\n".join(table_lines)
-    fig.text(
-        0.05,
-        -0.02,
-        table_text,
-        fontsize=7,
-        fontfamily="monospace",
-        verticalalignment="top",
+    table = ax_tab.table(
+        cellText=table_data,
+        colLabels=col_labels,
+        loc="center",
+        cellLoc="right",
     )
+    table.auto_set_font_size(False)
+    table.set_fontsize(8)
+    table.scale(1.0, 1.2)
+
+    # Style header row.
+    for col_idx in range(len(col_labels)):
+        cell = table[0, col_idx]
+        cell.set_text_props(fontweight="bold")
+        cell.set_facecolor("#e8e8e8")
 
     plt.tight_layout()
     plt.savefig(path, dpi=150, bbox_inches="tight")
