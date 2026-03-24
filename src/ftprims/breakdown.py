@@ -213,6 +213,20 @@ def extract_structural_breakdown(
         bucket["clifford_count"] += count * child_cliffords
         bucket["rotation_count"] += count * child_rotations
 
+    # Cost-aware reclassification: if a category classified as "rotations"
+    # by module path actually contains zero rotation gates and only
+    # non-Clifford T-gates (e.g. AddIntoPhaseGrad which decomposes to
+    # Toffoli gates), merge it into "controlled_nonclifford".
+    if "rotations" in acc:
+        rot_bucket = acc["rotations"]
+        if rot_bucket["rotation_count"] == 0 and rot_bucket["direct_t"] > 0:
+            target = acc["controlled_nonclifford"]
+            target["invocations"] += rot_bucket["invocations"]
+            target["direct_t"] += rot_bucket["direct_t"]
+            target["clifford_count"] += rot_bucket["clifford_count"]
+            target["rotation_count"] += rot_bucket["rotation_count"]
+            del acc["rotations"]
+
     # Build items with estimated FTQC cost.
     items: list[BreakdownItem] = []
     for component in COMPONENTS:
