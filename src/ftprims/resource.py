@@ -118,14 +118,29 @@ def _is_nontrivial(raw_t: int, ccz: int, rot: int, cliff: int) -> bool:
     return (raw_t + ccz + rot + cliff) > 0
 
 
+def _has_nonclifford(raw_t: int, ccz: int, rot: int, cliff: int) -> bool:
+    """True when the costs include at least one non-Clifford gate."""
+    return (raw_t + ccz + rot) > 0
+
+
 def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
     """Try progressively deeper extraction until we get non-zero costs.
 
     Returns ``(raw_t, ccz_count, rotation_count, clifford_count, qubits)``.
     The qubit count is updated from a decomposed bloq when the
     top-level returns zero.
+
+    When an early strategy returns only Clifford costs (no T-gates,
+    CCZ, or rotations), extraction continues to deeper strategies
+    that may uncover non-Clifford costs hidden in sub-bloqs — e.g.
+    ``ApproximateQFT`` where Toffoli gates inside
+    ``AddIntoPhaseGrad`` are invisible to top-level ``QECGatesCost``.
     """
     qubits = get_cost_value(bloq, QubitCount())
+
+    # Stash the first Clifford-only result so we can merge it with
+    # non-Clifford costs found by a deeper strategy.
+    clifford_fallback: tuple[int, int, int, int] | None = None
 
     # Strategy 1: QECGatesCost on the top-level bloq.
     try:
@@ -137,7 +152,9 @@ def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
             int(gates.clifford),
         )
         if _is_nontrivial(*vals):
-            return (*vals, int(qubits))
+            if _has_nonclifford(*vals):
+                return (*vals, int(qubits))
+            clifford_fallback = vals
     except Exception:
         pass
 
@@ -153,7 +170,10 @@ def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
         )
         if _is_nontrivial(*vals):
             q = get_cost_value(decomposed, QubitCount()) if int(qubits) == 0 else qubits
-            return (*vals, int(q))
+            if _has_nonclifford(*vals):
+                return (*vals, int(q))
+            if clifford_fallback is None:
+                clifford_fallback = vals
     except Exception:
         pass
 
@@ -162,9 +182,19 @@ def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
     try:
         vals = _extract_via_call_graph(bloq)
         if _is_nontrivial(*vals):
+            if clifford_fallback is not None and not _has_nonclifford(
+                *clifford_fallback
+            ):
+                # Merge: non-Clifford from call_graph, best Clifford from either.
+                merged_cliff = max(vals[3], clifford_fallback[3])
+                return (vals[0], vals[1], vals[2], merged_cliff, int(qubits))
             return (*vals, int(qubits))
     except Exception:
         pass
+
+    # Only Cliffords found — return that rather than zeros.
+    if clifford_fallback is not None:
+        return (*clifford_fallback, int(qubits))
 
     return 0, 0, 0, 0, int(qubits)
 

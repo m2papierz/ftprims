@@ -115,7 +115,12 @@ def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
     so that a composite bloq like ``Add`` returns its full gate cost
     without the caller needing to choose a depth.  Falls back to
     call-graph leaf aggregation, then to single-leaf extraction.
+
+    When ``QECGatesCost`` returns only Clifford costs, deeper
+    strategies are still attempted to find hidden non-Clifford gates.
     """
+    clifford_fallback: tuple[int, int, int, int] | None = None
+
     # Strategy 1: QECGatesCost on the child (handles composites).
     try:
         gates = get_cost_value(child, QECGatesCost())
@@ -126,7 +131,9 @@ def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
             int(gates.clifford),
         )
         if sum(vals) > 0:
-            return vals
+            if vals[0] + vals[1] + vals[2] > 0:
+                return vals
+            clifford_fallback = vals
     except Exception:
         pass
 
@@ -134,12 +141,19 @@ def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
     try:
         vals = _extract_via_call_graph(child)
         if sum(vals) > 0:
+            if clifford_fallback is not None:
+                # Merge: non-Clifford from call_graph, best Clifford from either.
+                merged_cliff = max(vals[3], clifford_fallback[3])
+                return (vals[0], vals[1], vals[2], merged_cliff)
             return vals
     except Exception:
         pass
 
     # Strategy 3: treat as a single leaf.
-    return _leaf_gate_costs(child)
+    leaf_vals = _leaf_gate_costs(child)
+    if clifford_fallback is not None and sum(leaf_vals) == 0:
+        return clifford_fallback
+    return leaf_vals
 
 
 def extract_structural_breakdown(
