@@ -13,6 +13,13 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from _style import (
+    FIG_DUAL,
+    PALETTE,
+    apply_theme,
+    light_grid,
+    savefig,
+)
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
@@ -68,101 +75,105 @@ def save_csv(rows: list[dict], path: Path) -> None:
 
 
 def plot_scaling(rows: list[dict], path: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIG_DUAL)
 
-    for variant, color, marker in [
-        ("textbook", "#e74c3c", "o"),
-        ("approx", "#3498db", "s"),
-    ]:
+    styles = {
+        "textbook": (PALETTE["red"], "o", "textbook"),
+        "approx": (PALETTE["blue"], "s", "approx"),
+    }
+
+    # Left panel: FTQC T-count (both variants)
+    for variant, (color, marker, label) in styles.items():
         subset = [r for r in rows if r["variant"] == variant and r["t_count_ftqc"] > 0]
         if not subset:
             continue
         ns = [r["n"] for r in subset]
         ts = [r["t_count_ftqc"] for r in subset]
-        ax1.semilogy(
-            ns, ts, f"{marker}-", color=color, linewidth=2, markersize=8, label=variant
-        )
+        ax1.semilogy(ns, ts, f"{marker}-", color=color, label=label)
 
     ax1.set_xlabel("Bitsize (n)")
-    ax1.set_ylabel("T-count (FTQC, incl. rotation synthesis)")
+    ax1.set_ylabel("FTQC T-count")
     ax1.set_title("QFT: Non-Clifford Cost Scaling")
     ax1.legend()
-    ax1.grid(True, alpha=0.3, which="both")
+    light_grid(ax1, which="both")
 
-    # Right panel: T-count savings ratio, or Clifford comparison if
-    # the approximate variant has zero T-cost (phase-gradient trick
-    # compiles all rotations to Clifford additions).
+    # Right panel: savings ratio if both have T-count, else Clifford comparison.
     tb = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "textbook"}
     ap = {r["n"]: r["t_count_ftqc"] for r in rows if r["variant"] == "approx"}
-    ns_ratio = [n for n in sorted(tb) if ap.get(n, 0) > 0 and tb[n] > 0]
+    ns_ratio = sorted(n for n in tb if ap.get(n, 0) > 0 and tb[n] > 0)
 
     if ns_ratio:
-        # Both variants have nonzero T-cost — show savings ratio.
         ratios = [tb[n] / ap[n] for n in ns_ratio]
-        ax2.plot(ns_ratio, ratios, "o-", color="#2ecc71", linewidth=2, markersize=8)
+        ax2.plot(ns_ratio, ratios, "o-", color=PALETTE["green"])
         for x, y in zip(ns_ratio, ratios):
             ax2.annotate(
-                f"{y:.1f}×",
+                f"{y:.1f}\u00d7",
                 (x, y),
                 textcoords="offset points",
-                xytext=(0, -16),
+                xytext=(0, 10),
                 ha="center",
+                fontsize=9,
+                color=PALETTE["green"],
+                fontweight="bold",
             )
-        ax2.axhline(y=1, color="gray", linestyle="--", alpha=0.5)
+        ax2.axhline(y=1, color=PALETTE["gray"], linestyle="--", alpha=0.5)
         ax2.set_ylabel("Textbook / Approximate")
-        ax2.set_title("FTQC T-count Savings from Approximation")
+        ax2.set_title("FTQC T-count Savings")
     else:
-        # Approx has zero T-cost — show Clifford count comparison.
-        for variant, color, marker in [
-            ("textbook", "#e74c3c", "o"),
-            ("approx", "#3498db", "s"),
-        ]:
+        for variant, (color, marker, label) in styles.items():
             subset = [r for r in rows if r["variant"] == variant]
             cs = [r["clifford_count"] for r in subset]
             ns = [r["n"] for r in subset]
             if any(c > 0 for c in cs):
-                ax2.semilogy(
-                    ns,
-                    cs,
-                    f"{marker}-",
-                    color=color,
-                    linewidth=2,
-                    markersize=8,
-                    label=variant,
-                )
+                ax2.semilogy(ns, cs, f"{marker}-", color=color, label=label)
         ax2.set_ylabel("Clifford gate count")
         ax2.set_title("QFT: Clifford Cost Comparison")
         ax2.legend()
 
     ax2.set_xlabel("Bitsize (n)")
-    ax2.grid(True, alpha=0.3, which="both")
+    light_grid(ax2, which="both")
 
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Two-panel breakdown for textbook QFT: T-cost (left) and Clifford count (right).
-
-    Cliffords have zero T-cost by definition, so stacking them on a
-    T-cost axis is misleading. Instead, show them on their own axis.
-    """
+    """Two-panel breakdown for textbook QFT."""
     subset = [r for r in rows if r["variant"] == "textbook"]
     ns = [str(r["n"]) for r in subset]
     rot_ftqc = [r["rotations_ftqc"] for r in subset]
     rot_count = [r["rotation_count"] for r in subset]
     cliff_count = [r["clifford_count"] for r in subset]
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIG_DUAL)
 
-    ax1.bar(ns, rot_ftqc, label="rotations (synthesised T-cost)", color="#e74c3c")
+    # Left: synthesised T-cost (log scale to handle 126..428k range)
+    bars = ax1.bar(
+        ns,
+        rot_ftqc,
+        color=PALETTE["red"],
+        alpha=0.85,
+        label="rotations (synthesised T-cost)",
+    )
+    ax1.set_yscale("log")
     ax1.set_xlabel("Bitsize (n)")
     ax1.set_ylabel("Estimated FTQC T-cost")
     ax1.set_title("QFT Textbook: Non-Clifford Cost")
-    ax1.legend()
-    ax1.grid(True, alpha=0.3, axis="y")
+    ax1.legend(fontsize=9)
+    light_grid(ax1, axis="y", which="both")
+    for bar, val in zip(bars, rot_ftqc):
+        if val > 0:
+            ax1.text(
+                bar.get_x() + bar.get_width() / 2,
+                val * 1.4,
+                f"{val:,}",
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+                color=PALETTE["red"],
+            )
 
+    # Right: gate counts by type
     x = range(len(ns))
     w = 0.35
     ax2.bar(
@@ -170,31 +181,32 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
         rot_count,
         w,
         label="rotation gates",
-        color="#e74c3c",
-        alpha=0.8,
+        color=PALETTE["red"],
+        alpha=0.85,
     )
     ax2.bar(
         [i + w / 2 for i in x],
         cliff_count,
         w,
         label="Clifford gates",
-        color="#95a5a6",
-        alpha=0.8,
+        color=PALETTE["gray"],
+        alpha=0.7,
     )
     ax2.set_xticks(list(x))
     ax2.set_xticklabels(ns)
     ax2.set_xlabel("Bitsize (n)")
     ax2.set_ylabel("Gate count")
     ax2.set_title("QFT Textbook: Gate Counts by Type")
-    ax2.legend()
-    ax2.grid(True, alpha=0.3, axis="y")
+    ax2.legend(fontsize=9)
+    light_grid(ax2, axis="y")
 
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def main() -> None:
+    apply_theme()
+
     csv_dir = Path("results/sweeps")
     chart_dir = Path("results/charts")
     csv_dir.mkdir(parents=True, exist_ok=True)

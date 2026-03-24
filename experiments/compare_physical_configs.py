@@ -24,6 +24,7 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 
+from _style import PALETTE, apply_theme, light_grid, savefig
 from ftprims.algorithms import registry
 from ftprims.physical import PhysicalModelSpec, estimate_physical
 
@@ -40,11 +41,9 @@ PRESETS: list[dict[str, str]] = [
     {"profile": "beverland", "data_block": "fast", "factory": "fifteen_to_one"},
 ]
 
-# Short labels for chart annotations: "profile data_block factory"
-# abbreviated to single letters where possible.
 _PROFILE_SHORT = {"gidney_fowler": "GF", "beverland": "Bev"}
 _BLOCK_SHORT = {"simple": "S", "compact": "C", "fast": "F"}
-_FACTORY_SHORT = {"ccz2t": "ccz2t", "fifteen_to_one": "15→1"}
+_FACTORY_SHORT = {"ccz2t": "ccz2t", "fifteen_to_one": "15\u21921"}
 
 
 def _short_label(r: dict) -> str:
@@ -92,11 +91,11 @@ def collect(primitive: str, params: dict) -> list[dict]:
                 "budget_satisfied": phys.budget_satisfied,
             }
         )
-        ok = "✓" if phys.budget_satisfied else "✗"
+        ok = "\u2713" if phys.budget_satisfied else "\u2717"
         print(
             f"  {ok} {label:45s}  "
             f"q={phys.physical_qubits:>10,}  "
-            f"t={phys.wall_time_us:>14,.0f}µs  "
+            f"t={phys.wall_time_us:>14,.0f}\u00b5s  "
             f"d={phys.code_distance}"
         )
     return rows
@@ -114,12 +113,15 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
     fig, (ax, ax_tab) = plt.subplots(
         2,
         1,
-        figsize=(11, 9),
-        gridspec_kw={"height_ratios": [3, 1]},
+        figsize=(11, 9.5),
+        gridspec_kw={"height_ratios": [3, 1.2]},
     )
 
+    color_met = PALETTE["green"]
+    color_not = PALETTE["red"]
+
     for idx, r in enumerate(rows):
-        color = "#2ecc71" if r["budget_satisfied"] else "#e74c3c"
+        color = color_met if r["budget_satisfied"] else color_not
         marker = "o" if r["factory"] == "ccz2t" else "^"
         ax.scatter(
             r["physical_qubits"],
@@ -131,19 +133,20 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             linewidths=0.5,
             zorder=3,
         )
+        # Offset labels away from cluster center to reduce overlap
         ax.annotate(
             str(idx + 1),
             (r["physical_qubits"], r["wall_time_us"]),
             textcoords="offset points",
-            xytext=(6, 6),
-            fontsize=8,
+            xytext=(8, 6),
+            fontsize=8.5,
             fontweight="bold",
         )
 
     ax.set_xlabel("Physical qubits")
-    ax.set_ylabel("Wall time (µs)")
+    ax.set_ylabel("Wall time (\u00b5s)")
     ax.set_title(f"Physical Config Comparison: {primitive}")
-    ax.grid(True, alpha=0.3)
+    light_grid(ax)
 
     legend_elements = [
         Line2D(
@@ -151,7 +154,7 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             [0],
             marker="o",
             color="w",
-            markerfacecolor="#2ecc71",
+            markerfacecolor=color_met,
             markersize=10,
             markeredgecolor="black",
             label="budget met",
@@ -161,7 +164,7 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             [0],
             marker="o",
             color="w",
-            markerfacecolor="#e74c3c",
+            markerfacecolor=color_not,
             markersize=10,
             markeredgecolor="black",
             label="budget NOT met",
@@ -187,11 +190,11 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
             label="fifteen_to_one",
         ),
     ]
-    ax.legend(handles=legend_elements, fontsize=8, loc="upper left")
+    ax.legend(handles=legend_elements, fontsize=9, loc="upper left")
 
-    # Config table as a proper subplot.
+    # Config table
     ax_tab.axis("off")
-    col_labels = ["#", "Config", "Phys. qubits", "Wall time (µs)", "d", "Budget"]
+    col_labels = ["#", "Config", "Phys. qubits", "Wall time (\u00b5s)", "d", "Budget"]
     table_data = []
     for idx, r in enumerate(rows):
         short = _short_label(r)
@@ -214,21 +217,21 @@ def plot_scatter(rows: list[dict], primitive: str, path: Path) -> None:
         cellLoc="right",
     )
     table.auto_set_font_size(False)
-    table.set_fontsize(8)
-    table.scale(1.0, 1.2)
+    table.set_fontsize(9.5)
+    table.scale(1.0, 1.3)
 
-    # Style header row.
     for col_idx in range(len(col_labels)):
         cell = table[0, col_idx]
         cell.set_text_props(fontweight="bold")
-        cell.set_facecolor("#e8e8e8")
+        cell.set_facecolor("#E5E7EB")
 
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def main() -> None:
+    apply_theme()
+
     if len(sys.argv) < 2:
         primitive = "qft"
         params = {"n": 16, "variant": "textbook"}

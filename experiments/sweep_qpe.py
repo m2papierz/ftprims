@@ -13,6 +13,14 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from _style import (
+    FIG_DUAL,
+    FIG_TALL,
+    PALETTE,
+    apply_theme,
+    light_grid,
+    savefig,
+)
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
@@ -63,27 +71,26 @@ def save_csv(rows: list[dict], path: Path) -> None:
 
 
 def plot_scaling(rows: list[dict], path: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(13, 5))
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIG_DUAL)
 
     ms = [r["m"] for r in rows]
     ts = [r["t_count_ftqc"] for r in rows]
     qs = [r["logical_qubits_estimate"] for r in rows]
 
-    ax1.semilogy(ms, ts, "o-", color="#e74c3c", linewidth=2, markersize=8)
+    ax1.semilogy(ms, ts, "o-", color=PALETTE["red"])
     ax1.set_xlabel("Precision bits (m)")
-    ax1.set_ylabel("T-count (FTQC, incl. rotation synthesis)")
+    ax1.set_ylabel("FTQC T-count")
     ax1.set_title("QPE: Non-Clifford Cost vs Precision")
-    ax1.grid(True, alpha=0.3, which="both")
+    light_grid(ax1, which="both")
 
-    ax2.plot(ms, qs, "s-", color="#3498db", linewidth=2, markersize=8)
+    ax2.plot(ms, qs, "s-", color=PALETTE["blue"])
     ax2.set_xlabel("Precision bits (m)")
     ax2.set_ylabel("Logical qubits (estimate)")
     ax2.set_title("QPE: Qubit Count vs Precision")
-    ax2.grid(True, alpha=0.3)
+    light_grid(ax2)
 
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
@@ -93,22 +100,40 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
     ctrl = [r["controlled_nonclifford_ftqc"] for r in rows]
     rot = [r["rotations_ftqc"] for r in rows]
 
-    fig, ax = plt.subplots(figsize=(8, 5))
-    ax.bar(ms, qft, label="qft_qpe_core", color="#3498db")
-    ax.bar(ms, ctrl, bottom=qft, label="controlled_nonclifford", color="#e74c3c")
+    fig, ax = plt.subplots(figsize=FIG_TALL)
+
+    ax.bar(ms, qft, label="qft_qpe_core", color=PALETTE["blue"])
+    ax.bar(ms, ctrl, bottom=qft, label="controlled_nonclifford", color=PALETTE["red"])
     bottoms = [q + c for q, c in zip(qft, ctrl)]
-    ax.bar(ms, rot, bottom=bottoms, label="rotations", color="#f39c12")
+    ax.bar(ms, rot, bottom=bottoms, label="rotations", color=PALETTE["orange"])
+
+    # Annotate dominant component transition
+    for i, r in enumerate(rows):
+        total = qft[i] + ctrl[i] + rot[i]
+        if total > 0:
+            ax.text(
+                i,
+                total * 1.02,
+                f"{total:,}",
+                ha="center",
+                va="bottom",
+                fontsize=8,
+                color=PALETTE["gray"],
+            )
+
     ax.set_xlabel("Precision bits (m)")
     ax.set_ylabel("Estimated FTQC T-cost")
     ax.set_title("QPE: Cost Breakdown by Component")
-    ax.legend()
-    ax.grid(True, alpha=0.3, axis="y")
+    ax.legend(loc="upper left", fontsize=9)
+    light_grid(ax, axis="y")
+
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def main() -> None:
+    apply_theme()
+
     csv_dir = Path("results/sweeps")
     chart_dir = Path("results/charts")
     csv_dir.mkdir(parents=True, exist_ok=True)

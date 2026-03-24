@@ -13,6 +13,14 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
+from _style import (
+    FIG_DUAL,
+    FIG_TALL,
+    PALETTE,
+    apply_theme,
+    light_grid,
+    savefig,
+)
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
@@ -28,11 +36,11 @@ BITSIZES: dict[str, list[int]] = {
 }
 
 COLORS = {
-    "add": "#3498db",
-    "add_oop": "#2ecc71",
-    "leq": "#e67e22",
-    "mul": "#e74c3c",
-    "modadd": "#9b59b6",
+    "add": PALETTE["blue"],
+    "add_oop": PALETTE["green"],
+    "leq": PALETTE["orange"],
+    "mul": PALETTE["red"],
+    "modadd": PALETTE["purple"],
 }
 
 
@@ -83,57 +91,48 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(14, 5))
 
     for op in BITSIZES:
-        subset = [r for r in rows if r["op"] == op]
-        ns = [r["n"] for r in subset]
-        ts = [r["t_count_ftqc"] for r in subset]
-        qs = [r["logical_qubits_estimate"] for r in subset]
+        color = COLORS[op]
+        ts_positive = [r for r in rows if r["op"] == op and r["t_count_ftqc"] > 0]
+        qs_positive = [
+            r for r in rows if r["op"] == op and r["logical_qubits_estimate"] > 0
+        ]
 
-        # loglog cannot plot zeros — skip ops where all T-counts are zero.
-        ts_positive = [r for r in subset if r["t_count_ftqc"] > 0]
         if ts_positive:
             ax1.loglog(
                 [r["n"] for r in ts_positive],
                 [r["t_count_ftqc"] for r in ts_positive],
                 "o-",
-                color=COLORS[op],
-                linewidth=2,
-                markersize=7,
+                color=color,
                 label=op,
             )
-        else:
-            ax1.plot([], [], "o-", color=COLORS[op], label=f"{op} (zero T)")
 
-        qs_positive = [r for r in subset if r["logical_qubits_estimate"] > 0]
         if qs_positive:
             ax2.loglog(
                 [r["n"] for r in qs_positive],
                 [r["logical_qubits_estimate"] for r in qs_positive],
                 "o-",
-                color=COLORS[op],
-                linewidth=2,
-                markersize=7,
+                color=color,
                 label=op,
             )
 
     ax1.set_xlabel("Bitsize (n)")
-    ax1.set_ylabel("T-count (FTQC)")
+    ax1.set_ylabel("FTQC T-count")
     ax1.set_title("Arithmetic: T-gate Scaling")
     ax1.legend(fontsize=9)
-    ax1.grid(True, alpha=0.3, which="both")
+    light_grid(ax1, which="both")
 
     ax2.set_xlabel("Bitsize (n)")
     ax2.set_ylabel("Logical qubits (estimate)")
     ax2.set_title("Arithmetic: Qubit Scaling")
     ax2.legend(fontsize=9)
-    ax2.grid(True, alpha=0.3, which="both")
+    light_grid(ax2, which="both")
 
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def plot_breakdown(rows: list[dict], path: Path) -> None:
-    """Grouped bar: gate-type breakdown (T-direct, Cliffords) per op at n=16."""
+    """Grouped bar: gate-type breakdown per op at n=16 (log scale)."""
     target_n = 16
     subset = [r for r in rows if r["n"] == target_n]
     if not subset:
@@ -148,26 +147,53 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
     x = range(len(ops))
     w = 0.35
 
-    fig, ax = plt.subplots(figsize=(9, 5))
-    ax.bar(
-        [i - w / 2 for i in x], t_direct, w, label="T-gates (direct)", color="#e74c3c"
+    fig, ax = plt.subplots(figsize=FIG_TALL)
+    bars_t = ax.bar(
+        [i - w / 2 for i in x],
+        t_direct,
+        w,
+        label="T-gates (direct)",
+        color=PALETTE["red"],
+        alpha=0.85,
     )
-    ax.bar(
-        [i + w / 2 for i in x], cliffords, w, label="Clifford gates", color="#95a5a6"
+    bars_c = ax.bar(
+        [i + w / 2 for i in x],
+        cliffords,
+        w,
+        label="Clifford gates",
+        color=PALETTE["gray"],
+        alpha=0.7,
     )
+
+    # Log scale so mul doesn't crush add/add_oop
+    ax.set_yscale("log")
+
+    # Value labels
+    for bar, val in zip(list(bars_t) + list(bars_c), t_direct + cliffords):
+        if val > 0:
+            ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                val * 1.15,
+                str(val),
+                ha="center",
+                va="bottom",
+                fontsize=7.5,
+            )
+
     ax.set_xticks(list(x))
     ax.set_xticklabels(ops)
     ax.set_xlabel("Operation")
     ax.set_ylabel("Gate count")
     ax.set_title(f"Arithmetic: Gate-Type Breakdown (n={target_n})")
-    ax.legend()
-    ax.grid(True, alpha=0.3, axis="y")
+    ax.legend(fontsize=9)
+    light_grid(ax, axis="y", which="both")
     plt.tight_layout()
-    plt.savefig(path, dpi=150, bbox_inches="tight")
-    print(f"Saved {path}")
+    savefig(fig, path)
 
 
 def main() -> None:
+    apply_theme()
+
     csv_dir = Path("results/sweeps")
     chart_dir = Path("results/charts")
     csv_dir.mkdir(parents=True, exist_ok=True)
