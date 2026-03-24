@@ -158,6 +158,7 @@ def plot_scaling(rows: list[dict], path: Path) -> None:
 
 
 def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
+    """Trade-off curve: all k values labeled, Pareto frontier highlighted."""
     fig, ax = plt.subplots(figsize=FIG_TALL)
 
     qs = [r["logical_qubits_estimate"] for r in rows]
@@ -174,43 +175,50 @@ def plot_pareto(rows: list[dict], data_size: int, path: Path) -> None:
         )
         if not dominated:
             frontier_idx.append(i)
+    frontier_set = set(frontier_idx)
 
-    # Non-frontier points (light, no labels).
-    nf_idx = [i for i in range(len(qs)) if i not in frontier_idx]
-    if nf_idx:
-        ax.scatter(
-            [qs[i] for i in nf_idx],
-            [ts[i] for i in nf_idx],
-            color="#D1D5DB",
-            s=70,
-            zorder=1,
-            edgecolors="#9CA3AF",
-            linewidths=0.5,
-        )
+    # Draw full trade-off curve (all k connected, sorted by k).
+    order = sorted(range(len(ks)), key=lambda i: ks[i])
+    ax.plot(
+        [qs[i] for i in order],
+        [ts[i] for i in order],
+        "o--",
+        color="#D1D5DB",
+        markersize=9,
+        zorder=1,
+        linewidth=1.2,
+    )
 
-    # Frontier points (colored, labeled).
+    # Highlight frontier points.
     frontier = sorted(frontier_idx, key=lambda i: qs[i])
     fq = [qs[i] for i in frontier]
     ft = [ts[i] for i in frontier]
-    fk = [ks[i] for i in frontier]
-    ax.plot(fq, ft, "o-", color=PALETTE["purple"], markersize=10, zorder=2)
+    ax.plot(
+        fq, ft, "o-", color=PALETTE["purple"], markersize=12, zorder=2, linewidth=2.5
+    )
 
-    # Labels — offset alternating up/down to avoid overlap.
-    for idx, (q, t, k) in enumerate(zip(fq, ft, fk)):
-        vert = 10 if idx % 2 == 0 else -16
+    # Label every point.
+    for i in order:
+        is_front = i in frontier_set
+        color = PALETTE["purple"] if is_front else PALETTE["gray"]
+        weight = "bold" if is_front else "normal"
+        vert = 12 if ks[i] % 2 != 0 else -16
+        label = f"k={ks[i]}"
+        if is_front:
+            label += " \u2605"
         ax.annotate(
-            f"k={k}",
-            (q, t),
+            label,
+            (qs[i], ts[i]),
             textcoords="offset points",
             xytext=(10, vert),
             fontsize=9,
-            fontweight="bold",
-            color=PALETTE["purple"],
+            fontweight=weight,
+            color=color,
         )
 
     ax.set_xlabel("Total logical qubits")
     ax.set_ylabel("FTQC T-count")
-    ax.set_title(f"SelectSwapQROM: T-gates vs Qubits Pareto Frontier (N={data_size})")
+    ax.set_title(f"SelectSwapQROM: Qubits vs T-gates Trade-off (N={data_size})")
     light_grid(ax)
 
     plt.tight_layout()

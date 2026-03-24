@@ -142,6 +142,7 @@ def _verify_classically(
     oracle: _ClassicalOracle,
     n: int,
     mod: int,
+    op: str = "",
 ) -> VerificationResult:
     """Run random classical test vectors through ``call_classically``."""
     bound = 1 << n
@@ -160,7 +161,7 @@ def _verify_classically(
         except Exception as exc:
             return VerificationResult(
                 status="fail",
-                detail=f"call_classically({inputs}) failed: {exc}",
+                detail=f"{op}(n={n}): call_classically({inputs}) failed: {exc}",
             )
 
         # Map positional results back to register names.
@@ -170,12 +171,13 @@ def _verify_classically(
         if actual != expected:
             return VerificationResult(
                 status="fail",
-                detail=f"Mismatch: inputs={inputs} expected={expected} got={actual}",
+                detail=f"{op}(n={n}): mismatch inputs={inputs} expected={expected} got={actual}",
             )
 
+    mod_str = f", mod={mod}" if mod else ""
     return VerificationResult(
         status="pass",
-        detail=f"{_VERIFY_SAMPLES} random vectors OK (n={n})",
+        detail=f"{op}(n={n}{mod_str}): {_VERIFY_SAMPLES} random classical vectors OK",
     )
 
 
@@ -221,7 +223,7 @@ class ArithmeticBenchmark(Benchmark):
         if n > _MAX_VERIFY_N:
             return VerificationResult(
                 status="skip",
-                detail=f"n={n} too large for verification (max {_MAX_VERIFY_N})",
+                detail=f"{op}(n={n}): too large for verification (max n={_MAX_VERIFY_N})",
             )
 
         if op == "mul":
@@ -242,4 +244,4 @@ class ArithmeticBenchmark(Benchmark):
         # Resolve the modulus that _build_arithmetic actually used.
         effective_mod = getattr(bloq, "mod", 0)
         oracle = oracle_factory(n)
-        return _verify_classically(bloq, oracle, n, effective_mod)
+        return _verify_classically(bloq, oracle, n, effective_mod, op=op)

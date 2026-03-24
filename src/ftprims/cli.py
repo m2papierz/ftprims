@@ -401,7 +401,6 @@ def export_qref(
                     f"threshold {_SYMBOLIC_ERROR_THRESHOLD:.0%}. "
                     f"Symbolic export is unreliable at these parameters."
                 )
-                sys.exit(1)
 
 
 @main.command()
