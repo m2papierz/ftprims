@@ -1,10 +1,10 @@
 """Sweep QROM parameters: data_size x variant, plus Pareto trade-off.
 
 Outputs:
-  results/sweep_qrom.csv
-  results/chart_qrom_scaling.png
-  results/chart_qrom_pareto.png
-  results/chart_qrom_breakdown.png
+  results/sweeps/sweep_qrom.csv
+  results/charts/qrom_scaling.png
+  results/charts/qrom_pareto.png
+  results/charts/qrom_breakdown.png
 """
 
 from __future__ import annotations
@@ -229,17 +229,19 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+    csv_dir = Path("results/sweeps")
+    chart_dir = Path("results/charts")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    chart_dir.mkdir(parents=True, exist_ok=True)
     bench = registry["qrom"]
 
     scaling_rows = collect_scaling(bench)
-    save_csv(scaling_rows, out_dir / "sweep_qrom.csv")
-    plot_scaling(scaling_rows, out_dir / "chart_qrom_scaling.png")
-    plot_breakdown(scaling_rows, out_dir / "chart_qrom_breakdown.png")
+    save_csv(scaling_rows, csv_dir / "sweep_qrom.csv")
+    plot_scaling(scaling_rows, chart_dir / "qrom_scaling.png")
+    plot_breakdown(scaling_rows, chart_dir / "qrom_breakdown.png")
 
     pareto_rows = collect_pareto(bench, PARETO_DATA_SIZE)
-    plot_pareto(pareto_rows, PARETO_DATA_SIZE, out_dir / "chart_qrom_pareto.png")
+    plot_pareto(pareto_rows, PARETO_DATA_SIZE, chart_dir / "qrom_pareto.png")
 
 
 if __name__ == "__main__":

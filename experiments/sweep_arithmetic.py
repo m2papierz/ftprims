@@ -1,9 +1,9 @@
 """Sweep arithmetic operations: op x n => T-count, qubits, breakdown.
 
 Outputs:
-  results/sweep_arithmetic.csv
-  results/chart_arithmetic_scaling.png
-  results/chart_arithmetic_breakdown.png
+  results/sweeps/sweep_arithmetic.csv
+  results/charts/arithmetic_scaling.png
+  results/charts/arithmetic_breakdown.png
 """
 
 from __future__ import annotations
@@ -168,13 +168,15 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+    csv_dir = Path("results/sweeps")
+    chart_dir = Path("results/charts")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect(registry["arithmetic"])
-    save_csv(rows, out_dir / "sweep_arithmetic.csv")
-    plot_scaling(rows, out_dir / "chart_arithmetic_scaling.png")
-    plot_breakdown(rows, out_dir / "chart_arithmetic_breakdown.png")
+    save_csv(rows, csv_dir / "sweep_arithmetic.csv")
+    plot_scaling(rows, chart_dir / "arithmetic_scaling.png")
+    plot_breakdown(rows, chart_dir / "arithmetic_breakdown.png")
 
 
 if __name__ == "__main__":

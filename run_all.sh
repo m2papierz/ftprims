@@ -3,7 +3,13 @@
 set -uo pipefail
 
 RESULTS="results"
-mkdir -p "$RESULTS"
+RUNS_DIR="${RESULTS}/runs"
+QREF_NUM_DIR="${RESULTS}/qref/numeric"
+QREF_SYM_DIR="${RESULTS}/qref/symbolic"
+CHARTS_DIR="${RESULTS}/charts"
+SWEEPS_DIR="${RESULTS}/sweeps"
+CONFIGS_DIR="${RESULTS}/configs"
+mkdir -p "$RUNS_DIR" "$QREF_NUM_DIR" "$QREF_SYM_DIR" "$CHARTS_DIR" "$SWEEPS_DIR" "$CONFIGS_DIR"
 
 GREEN='\033[0;32m'
 CYAN='\033[0;36m'
@@ -35,7 +41,7 @@ declare -a RUNS=(
 for run in "${RUNS[@]}"; do
     # Build output filename from args: qft_n=32_variant=textbook.json
     slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ //g; s/^_//')
-    outfile="${RESULTS}/run_${slug}.json"
+    outfile="${RUNS_DIR}/run_${slug}.json"
 
     echo "=> ftprims run $run"
     # shellcheck disable=SC2086
@@ -109,7 +115,7 @@ for ex in "${EXPORTS[@]}"; do
     # Numeric export
     # shellcheck disable=SC2086
     if ftprims export-qref $ex \
-        --out "${RESULTS}/qref_${slug}.yaml"; then
+        --out "${QREF_NUM_DIR}/qref_${slug}.yaml"; then
         ok "numeric: qref_${slug}.yaml"
     else
         fail "export $ex"
@@ -119,7 +125,7 @@ for ex in "${EXPORTS[@]}"; do
     # shellcheck disable=SC2086
     if ftprims export-qref $ex \
         --symbolic --check \
-        --out "${RESULTS}/qref_${slug}_symbolic.yaml"; then
+        --out "${QREF_SYM_DIR}/qref_${slug}_symbolic.yaml"; then
         ok "symbolic: qref_${slug}_symbolic.yaml"
     else
         fail "symbolic export $ex"
@@ -129,13 +135,13 @@ done
 # Bartiq compile (one example)
 section "BARTIQ COMPILE"
 
-if ftprims bartiq "${RESULTS}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
+if ftprims bartiq "${QREF_SYM_DIR}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
     ok "bartiq QFT"
 else
     fail "bartiq QFT"
 fi
 
-if ftprims bartiq "${RESULTS}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
+if ftprims bartiq "${QREF_SYM_DIR}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
     ok "bartiq arithmetic/add"
 else
     fail "bartiq arithmetic/add"
@@ -155,7 +161,7 @@ python experiments/compare_physical_configs.py qft n=16 variant=textbook \
 # Config dump (sanity)
 section "CONFIG"
 
-if ftprims dump-config --out "${RESULTS}/default_config.yaml"; then
+if ftprims dump-config --out "${CONFIGS_DIR}/default_config.yaml"; then
     ok "default_config.yaml"
 else
     fail "default_config.yaml"
@@ -163,7 +169,7 @@ fi
 
 section "ALL DONE"
 echo "Results in ${RESULTS}/"
-ls -1 "${RESULTS}/"
+find "${RESULTS}/" -type f | sort
 
 if [ "$FAIL_COUNT" -gt 0 ]; then
     echo -e "\n${RED}${FAIL_COUNT} step(s) failed.${NC}"

@@ -5,8 +5,8 @@ presets and produces a CSV + scatter plot of physical_qubits vs
 wall_time_us.
 
 Outputs:
-  results/compare_physical.csv
-  results/chart_physical_compare.png
+  results/sweeps/compare_physical.csv
+  results/charts/physical_compare.png
 
 Usage:
   python experiments/compare_physical_configs.py [PRIMITIVE] [PARAMS...]
@@ -238,12 +238,14 @@ def main() -> None:
 
     print(f"Comparing physical configs for {primitive} with {params}\n")
 
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+    csv_dir = Path("results/sweeps")
+    chart_dir = Path("results/charts")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect(primitive, params)
-    save_csv(rows, out_dir / "compare_physical.csv")
-    plot_scatter(rows, primitive, out_dir / "chart_physical_compare.png")
+    save_csv(rows, csv_dir / "compare_physical.csv")
+    plot_scatter(rows, primitive, chart_dir / "physical_compare.png")
 
 
 if __name__ == "__main__":

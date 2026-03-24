@@ -1,9 +1,9 @@
 """Sweep QFT parameters: n x variant => T-count, qubits, cost breakdown.
 
 Outputs:
-  results/sweep_qft.csv
-  results/chart_qft_scaling.png
-  results/chart_qft_breakdown.png
+  results/sweeps/sweep_qft.csv
+  results/charts/qft_scaling.png
+  results/charts/qft_breakdown.png
 """
 
 from __future__ import annotations
@@ -195,13 +195,15 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+    csv_dir = Path("results/sweeps")
+    chart_dir = Path("results/charts")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect(registry["qft"])
-    save_csv(rows, out_dir / "sweep_qft.csv")
-    plot_scaling(rows, out_dir / "chart_qft_scaling.png")
-    plot_breakdown(rows, out_dir / "chart_qft_breakdown.png")
+    save_csv(rows, csv_dir / "sweep_qft.csv")
+    plot_scaling(rows, chart_dir / "qft_scaling.png")
+    plot_breakdown(rows, chart_dir / "qft_breakdown.png")
 
 
 if __name__ == "__main__":

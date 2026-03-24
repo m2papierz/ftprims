@@ -1,9 +1,9 @@
 """Sweep QPE precision: m => T-count, qubits, breakdown.
 
 Outputs:
-  results/sweep_qpe.csv
-  results/chart_qpe_scaling.png
-  results/chart_qpe_breakdown.png
+  results/sweeps/sweep_qpe.csv
+  results/charts/qpe_scaling.png
+  results/charts/qpe_breakdown.png
 """
 
 from __future__ import annotations
@@ -109,13 +109,15 @@ def plot_breakdown(rows: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    out_dir = Path("results")
-    out_dir.mkdir(exist_ok=True)
+    csv_dir = Path("results/sweeps")
+    chart_dir = Path("results/charts")
+    csv_dir.mkdir(parents=True, exist_ok=True)
+    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect(registry["qpe"])
-    save_csv(rows, out_dir / "sweep_qpe.csv")
-    plot_scaling(rows, out_dir / "chart_qpe_scaling.png")
-    plot_breakdown(rows, out_dir / "chart_qpe_breakdown.png")
+    save_csv(rows, csv_dir / "sweep_qpe.csv")
+    plot_scaling(rows, chart_dir / "qpe_scaling.png")
+    plot_breakdown(rows, chart_dir / "qpe_breakdown.png")
 
 
 if __name__ == "__main__":
