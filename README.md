@@ -92,7 +92,7 @@ Gate classification is cost-aware: parameterised `*PowGate` bloqs are classified
 ### Example output
 
 ```bash
-ftprims run arithmetic -p n=16 -p op=add --breakdown --physical --explain-json
+ftprims run arithmetic -p n=8 -p op=modadd --breakdown --physical --explain-json
 ```
 
 ```json

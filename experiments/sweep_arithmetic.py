@@ -14,7 +14,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from _style import (
-    FIG_DUAL,
     FIG_TALL,
     PALETTE,
     apply_theme,
