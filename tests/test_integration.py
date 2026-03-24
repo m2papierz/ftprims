@@ -1,9 +1,4 @@
-"""Integration tests: real Qualtran bloqs, real cost extraction, no mocks.
-
-Every test builds actual bloqs and runs the full extraction pipeline.
-Slow tests (> ~10s) are marked ``pytest.mark.slow`` for optional skipping
-via ``pytest -m 'not slow'``.
-"""
+"""Integration tests: building bloqs and runs the full extraction pipeline."""
 
 from __future__ import annotations
 
