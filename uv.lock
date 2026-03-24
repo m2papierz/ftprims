@@ -904,6 +904,8 @@ dependencies = [
     { name = "pyyaml" },
     { name = "qref" },
     { name = "qualtran" },
+    { name = "scipy", version = "1.15.3", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
+    { name = "scipy", version = "1.17.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [package.dev-dependencies]
@@ -925,6 +927,7 @@ requires-dist = [
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "qref", specifier = ">=0.7.0" },
     { name = "qualtran", specifier = ">=0.7.0" },
+    { name = "scipy", specifier = ">=1.15.3" },
 ]
 
 [package.metadata.requires-dev]

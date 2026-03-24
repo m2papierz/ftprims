@@ -1,6 +1,12 @@
 # ftprims
 Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq) with native [QREF](https://github.com/PsiQ/qref) / [Bartiq](https://github.com/PsiQ/bartiq) export. Benchmark canonical FTQC building blocks, extract logical & physical resource costs via Qualtran, verify correctness with Cirq simulation, and export results as QREF programs for cost propagation in Bartiq.
 
+<p align="center">
+  <img src="landscape.png" width="850" alt="FTQC Primitive Resource Landscape">
+</p>
+
+*Physical resource landscape across 9 surface-code configurations — each region shows the qubits × time footprint of a primitive variant as problem size scales. Inspired by [Beverland et al.](https://arxiv.org/abs/2211.07629)*
+
 > [!NOTE]
 > Learning project - built to deepen hands-on understanding of FTQC resource estimation, Qualtran's bloq abstractions, and the QREF/Bartiq toolchain. Simplifications and approximations often appear in the design.
 

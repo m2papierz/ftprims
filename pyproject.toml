@@ -20,6 +20,7 @@ dependencies = [
     "pyyaml>=6.0.3",
     "qref>=0.7.0",
     "qualtran>=0.7.0",
+    "scipy>=1.15.3",
 ]
 
 [dependency-groups]

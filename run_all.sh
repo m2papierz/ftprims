@@ -160,6 +160,8 @@ python experiments/sweep_qrom.py       && ok "sweep_qrom"       || fail "sweep_q
 python experiments/compare_physical_configs.py qft n=16 variant=textbook \
 && ok "compare_physical_configs" || fail "compare_physical_configs"
 
+python experiments/landscape.py && ok "landscape" || fail "landscape"
+
 # Config dump (sanity)
 section "CONFIG"
 
