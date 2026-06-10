@@ -26,6 +26,7 @@ from _style import (
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
+
 DATA_SIZES = [16, 32, 64, 128, 256, 512, 1024]
 PARETO_DATA_SIZE = 256
 

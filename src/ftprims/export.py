@@ -35,6 +35,7 @@ from qref import SchemaV1
 from ftprims.algorithms._base import LogicalCosts
 from ftprims.config import DEFAULT_CONFIG, QREFConfig
 
+
 # ---------------------------------------------------------------------------
 # Symbolic cost formulas — APPROXIMATE ANALYTIC MODEL
 # ---------------------------------------------------------------------------

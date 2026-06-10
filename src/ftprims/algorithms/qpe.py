@@ -29,6 +29,7 @@ from ftprims.algorithms._base import (
 )
 from ftprims.resource import extract_logical_costs
 
+
 __all__ = ["QPEBenchmark"]
 
 _MAX_VERIFY_M = 8

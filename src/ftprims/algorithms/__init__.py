@@ -8,4 +8,5 @@ from ftprims.algorithms import (  # noqa: F401
 )
 from ftprims.algorithms._base import registry
 
+
 __all__ = ["registry"]

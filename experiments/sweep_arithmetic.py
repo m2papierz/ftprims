@@ -23,6 +23,7 @@ from _style import (
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
+
 # ModAdd cost extraction is very slow for large n in Qualtran,
 # so we cap it separately.
 BITSIZES: dict[str, list[int]] = {

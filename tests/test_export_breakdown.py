@@ -10,6 +10,7 @@ from ftprims.breakdown import extract_structural_breakdown
 from ftprims.config import DEFAULT_CONFIG
 from ftprims.export import build_qref_program, save_qref
 
+
 QREF_CASES = [
     ("qft", dict(n=32, variant="textbook"), 16),
     ("qft", dict(n=32, variant="approx"), 16),

@@ -24,6 +24,7 @@ from _style import (
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
+
 PRECISIONS = [4, 6, 8, 10, 12]
 PHI = 0.25
 

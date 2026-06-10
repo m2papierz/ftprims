@@ -30,6 +30,7 @@ from qualtran.surface_code import (
 
 from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 
+
 _MAX_AUTO_DISTANCE = 99
 
 

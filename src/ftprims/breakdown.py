@@ -28,6 +28,7 @@ from ftprims.resource import (
     rotation_synthesis_t_cost,
 )
 
+
 # Component taxonomy
 COMPONENTS = (
     "rotations",
