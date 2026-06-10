@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Run every ftprims benchmark, verify, export, and sweep.
+# Requires: uv sync (or override FTPRIMS / PYTHON if installed another way)
 set -uo pipefail
+
+FTPRIMS="${FTPRIMS:-uv run ftprims}"
+PYTHON="${PYTHON:-uv run python}"
 
 RESULTS="results"
 RUNS_DIR="${RESULTS}/runs"
@@ -43,9 +47,9 @@ for run in "${RUNS[@]}"; do
     slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ //g; s/^_//')
     outfile="${RUNS_DIR}/run_${slug}.json"
 
-    echo "=> ftprims run $run"
+    echo "=> $FTPRIMS run $run"
     # shellcheck disable=SC2086
-    if ftprims run $run \
+    if $FTPRIMS run $run \
         --breakdown --physical --explain-json \
         --out "$outfile"; then
         ok "$outfile"
@@ -65,9 +69,9 @@ declare -a PHYS_VARIANTS=(
 )
 
 for run in "${PHYS_VARIANTS[@]}"; do
-    echo "=> ftprims run $run --physical --breakdown"
+    echo "=> $FTPRIMS run $run --physical --breakdown"
     # shellcheck disable=SC2086
-    if ftprims run $run --physical --breakdown; then
+    if $FTPRIMS run $run --physical --breakdown; then
         ok "done"
     else
         fail "run $run"
@@ -91,7 +95,7 @@ declare -a VERIFIES=(
 
 for v in "${VERIFIES[@]}"; do
     # shellcheck disable=SC2086
-    if ! ftprims verify $v; then
+    if ! $FTPRIMS verify $v; then
         fail "verify $v"
     fi
 done
@@ -114,7 +118,7 @@ for ex in "${EXPORTS[@]}"; do
 
     # Numeric export
     # shellcheck disable=SC2086
-    if ftprims export-qref $ex \
+    if $FTPRIMS export-qref $ex \
         --out "${QREF_NUM_DIR}/qref_${slug}.yaml"; then
         ok "numeric: qref_${slug}.yaml"
     else
@@ -124,7 +128,7 @@ for ex in "${EXPORTS[@]}"; do
     # Symbolic export + consistency check (informational — divergence is
     # expected since symbolic formulas are textbook-level approximations).
     # shellcheck disable=SC2086
-    if ftprims export-qref $ex \
+    if $FTPRIMS export-qref $ex \
         --symbolic --check \
         --out "${QREF_SYM_DIR}/qref_${slug}_symbolic.yaml"; then
         ok "symbolic: qref_${slug}_symbolic.yaml"
@@ -137,13 +141,13 @@ done
 # Bartiq compile (one example)
 section "BARTIQ COMPILE"
 
-if ftprims bartiq "${QREF_SYM_DIR}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
+if $FTPRIMS bartiq "${QREF_SYM_DIR}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
     ok "bartiq QFT"
 else
     fail "bartiq QFT"
 fi
 
-if ftprims bartiq "${QREF_SYM_DIR}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
+if $FTPRIMS bartiq "${QREF_SYM_DIR}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
     ok "bartiq arithmetic/add"
 else
     fail "bartiq arithmetic/add"
@@ -152,20 +156,20 @@ fi
 # Experiment sweeps
 section "EXPERIMENT SWEEPS (CSV + charts)"
 
-python experiments/sweep_qft.py        && ok "sweep_qft"        || fail "sweep_qft"
-python experiments/sweep_qpe.py        && ok "sweep_qpe"        || fail "sweep_qpe"
-python experiments/sweep_arithmetic.py && ok "sweep_arithmetic" || fail "sweep_arithmetic"
-python experiments/sweep_qrom.py       && ok "sweep_qrom"       || fail "sweep_qrom"
+$PYTHON experiments/sweep_qft.py        && ok "sweep_qft"        || fail "sweep_qft"
+$PYTHON experiments/sweep_qpe.py        && ok "sweep_qpe"        || fail "sweep_qpe"
+$PYTHON experiments/sweep_arithmetic.py && ok "sweep_arithmetic" || fail "sweep_arithmetic"
+$PYTHON experiments/sweep_qrom.py       && ok "sweep_qrom"       || fail "sweep_qrom"
 
-python experiments/compare_physical_configs.py qft n=16 variant=textbook \
+$PYTHON experiments/compare_physical_configs.py qft n=16 variant=textbook \
 && ok "compare_physical_configs" || fail "compare_physical_configs"
 
-python experiments/landscape.py && ok "landscape" || fail "landscape"
+$PYTHON experiments/landscape.py && ok "landscape" || fail "landscape"
 
 # Config dump (sanity)
 section "CONFIG"
 
-if ftprims dump-config --out "${CONFIGS_DIR}/default_config.yaml"; then
+if $FTPRIMS dump-config --out "${CONFIGS_DIR}/default_config.yaml"; then
     ok "default_config.yaml"
 else
     fail "default_config.yaml"
