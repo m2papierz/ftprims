@@ -17,7 +17,7 @@ program:
   resources:
   - name: T_gates
     type: additive
-    value: 2014
+    value: 6799
   - name: cliffords
     type: additive
     value: 575
