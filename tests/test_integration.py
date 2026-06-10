@@ -8,7 +8,6 @@ from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 from ftprims.physical import PhysicalModelSpec, estimate_physical
 
-
 # Known-good reference values
 # Format: (primitive, params, t_direct, t_ftqc, qubits, rotation_count, dominant)
 REFERENCE_CASES = [

@@ -9,7 +9,7 @@ Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Built on [Qu
 </p>
 
 <p align="center">
-  <em>Physical resource landscape: each region shows the qubits x time footprint of a primitive variant as problem size scales. Every primitive is evaluated across 9 surface-code configurations: 2 QEC profiles (Gidney-Fowler, Beverland) x data blocks (simple, compact, fast) x magic-state factories (CCZ2T, 15-to-1). Inspired by [Beverland et al.](https://arxiv.org/abs/2211.07629)</em>
+  <em>Physical resource landscape: each region shows the qubits x time footprint of a primitive variant as problem size scales. Every primitive is evaluated across 9 selected surface-code configurations spanning 2 QEC profiles (Gidney-Fowler, Beverland), 3 data blocks (simple, compact, fast), and 2 magic-state factories (CCZ2T, 15-to-1). Inspired by [Beverland et al.](https://arxiv.org/abs/2211.07629)</em>
 </p>
 
 ### Primitives
@@ -104,7 +104,7 @@ ftprims run arithmetic -p n=8 -p op=modadd --breakdown --physical --explain-json
     "t_count_direct": 124,
     "t_count_ftqc": 124,
     "raw_t": 0,
-    "ccz_count": 31,
+    "and_count": 31,
     "clifford_count": 248,
     "rotation_count": 0,
     "rotation_synthesis_epsilon": 1e-10
@@ -264,7 +264,7 @@ Key config options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budge
 
 Logical costs report two T-count metrics:
 
-- **`t_count_direct`** - raw T-gates + 4xCCZ/And. Accurate for pure Clifford+T circuits.
+- **`t_count_direct`** - raw T-gates + 4×And gates. Accurate for pure Clifford+T circuits.
 - **`t_count_ftqc`** - includes rotation synthesis cost. This is the primary FTQC metric.
 
 When `--breakdown` is used, the output includes per-component cost attribution with estimated FTQC T-cost and a summary identifying the dominant component.

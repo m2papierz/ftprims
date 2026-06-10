@@ -137,7 +137,7 @@ def run(
             "t_count_direct": costs.t_count_direct,
             "t_count_ftqc": costs.t_count_ftqc,
             "raw_t": costs.raw_t,
-            "ccz_count": costs.ccz_count,
+            "and_count": costs.and_count,
             "clifford_count": costs.clifford_count,
             "rotation_count": costs.rotation_count,
             "rotation_synthesis_epsilon": costs.rotation_synthesis_epsilon,

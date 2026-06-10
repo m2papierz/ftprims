@@ -6,7 +6,6 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-
 PALETTE = {
     "blue": "#2563EB",
     "red": "#DC2626",

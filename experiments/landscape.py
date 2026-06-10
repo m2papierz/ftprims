@@ -19,7 +19,6 @@ from scipy.spatial import ConvexHull
 
 from _style import apply_theme, light_grid, savefig
 
-
 CONFIGS = [
     dict(profile="gidney_fowler", data_block="simple", factory="ccz2t"),
     dict(profile="gidney_fowler", data_block="compact", factory="ccz2t"),

@@ -30,7 +30,6 @@ from qualtran.surface_code import (
 
 from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 
-
 _MAX_AUTO_DISTANCE = 99
 
 
@@ -141,7 +140,7 @@ def _algo_summary_from_logical(logical: LogicalCosts) -> AlgorithmSummary:
         n_algo_qubits=logical.logical_qubits_estimate,
         n_logical_gates=GateCounts(
             t=logical.raw_t,
-            and_bloq=logical.ccz_count,
+            and_bloq=logical.and_count,
             rotation=logical.rotation_count,
         ),
     )

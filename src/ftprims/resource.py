@@ -243,7 +243,7 @@ def extract_logical_costs(
         t_count_direct=t_count_direct,
         t_count_ftqc=t_count_ftqc,
         raw_t=raw_t,
-        ccz_count=ccz_count,
+        and_count=ccz_count,
         clifford_count=clifford_count,
         rotation_count=rotation_count,
         rotation_synthesis_epsilon=rotation_synthesis_epsilon,

@@ -66,7 +66,7 @@ def test_cli_logical_matches_api(cli_args, name, params):
     assert cli_l["t_count_ftqc"] == api.t_count_ftqc
     assert cli_l["logical_qubits_estimate"] == api.logical_qubits_estimate
     assert cli_l["rotation_count"] == api.rotation_count
-    assert cli_l["ccz_count"] == api.ccz_count
+    assert cli_l["and_count"] == api.and_count
 
 
 @pytest.mark.parametrize(
