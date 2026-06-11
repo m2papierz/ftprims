@@ -37,3 +37,8 @@ results/
 
 # Jupyter
 .ipynb_checkpoints/
+.trurlic/.state/
+
+# Trurlic tool
+.trurlic/
+.mcp.json
