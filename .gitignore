@@ -39,7 +39,8 @@ results/
 .ipynb_checkpoints/
 .trurlic/.state/
 
-# Trurlic tool
+# Coding tools
 .trurlic/
 .mcp.json
 CLAUDE.md
+.claude/
