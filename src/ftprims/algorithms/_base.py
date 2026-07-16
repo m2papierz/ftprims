@@ -34,6 +34,43 @@ class LogicalCosts:
     rotation_synthesis_epsilon: float | None = None
     breakdown: tuple[BreakdownItem, ...] = ()
 
+    @classmethod
+    def from_toffoli_count(
+        cls,
+        toffoli_count: float,
+        *,
+        logical_qubits: int,
+        raw_t: int = 0,
+    ) -> "LogicalCosts":
+        """Build a ``LogicalCosts`` from a Toffoli/And count and a qubit count.
+
+        For large factoring workloads the logical-qubit count comes from the
+        paper's analytic formula (e.g. GE19 ``3n``), NOT from a traced
+        ``QubitCount`` (which is O(gates) and hangs at n≥128). This constructor
+        assembles the frozen record directly so the physical layer can be fed a
+        paper's closed-form count.
+
+        Parameters
+        ----------
+        toffoli_count:
+            Number of Toffoli/And gates. Counted as ``and_count`` so the shared
+            ``raw_t + 4*and`` T-equivalent convention applies (1 Toffoli = 4 T).
+        logical_qubits:
+            Logical-qubit count, from the paper's analytic formula.
+        raw_t:
+            Any additional raw T-gates (default 0; factoring is Toffoli-dominated).
+        """
+        and_count = int(toffoli_count)
+        t_direct = raw_t + 4 * and_count
+        return cls(
+            logical_qubits_estimate=int(logical_qubits),
+            t_count_direct=t_direct,
+            t_count_ftqc=t_direct,  # no arbitrary rotations in modular exponentiation
+            raw_t=raw_t,
+            and_count=and_count,
+            rotation_count=0,
+        )
+
 
 @attrs.define(frozen=True)
 class PhysicalCosts:
