@@ -8,7 +8,6 @@ from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 from ftprims.physical import PhysicalModelSpec, estimate_physical
 
-
 # Known-good reference values
 # Format: (primitive, params, t_direct, t_ftqc, qubits, rotation_count, dominant)
 REFERENCE_CASES = [
@@ -80,18 +79,18 @@ def test_logical_costs_match_reference(
     bloq = bench.build_bloq(**params)
     costs = bench.logical_costs(bloq)
 
-    assert (
-        costs.t_count_direct == exp_direct
-    ), f"t_count_direct: {costs.t_count_direct} != {exp_direct}"
-    assert (
-        costs.t_count_ftqc == exp_ftqc
-    ), f"t_count_ftqc: {costs.t_count_ftqc} != {exp_ftqc}"
-    assert (
-        costs.logical_qubits_estimate == exp_qubits
-    ), f"qubits: {costs.logical_qubits_estimate} != {exp_qubits}"
-    assert (
-        costs.rotation_count == exp_rot
-    ), f"rotation_count: {costs.rotation_count} != {exp_rot}"
+    assert costs.t_count_direct == exp_direct, (
+        f"t_count_direct: {costs.t_count_direct} != {exp_direct}"
+    )
+    assert costs.t_count_ftqc == exp_ftqc, (
+        f"t_count_ftqc: {costs.t_count_ftqc} != {exp_ftqc}"
+    )
+    assert costs.logical_qubits_estimate == exp_qubits, (
+        f"qubits: {costs.logical_qubits_estimate} != {exp_qubits}"
+    )
+    assert costs.rotation_count == exp_rot, (
+        f"rotation_count: {costs.rotation_count} != {exp_rot}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -149,9 +148,9 @@ def test_breakdown_dominant_component(
     if total == 0:
         pytest.skip("total FTQC cost is 0 — dominant label undefined")
 
-    assert (
-        summary["dominant_component"] == exp_dom
-    ), f"dominant: {summary['dominant_component']} != {exp_dom}"
+    assert summary["dominant_component"] == exp_dom, (
+        f"dominant: {summary['dominant_component']} != {exp_dom}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -178,9 +177,9 @@ def test_physical_estimation_sane(name, params):
     assert phys.wall_time_us > 0, "wall_time_us must be > 0"
     assert phys.code_distance >= 3, "code_distance must be >= 3"
     assert phys.physical_qubits > 0, "physical_qubits must be > 0"
-    assert (
-        phys.budget_satisfied
-    ), f"error budget not met: failure_prob={phys.failure_prob:.2e} > {phys.error_budget:.2e}"
+    assert phys.budget_satisfied, (
+        f"error budget not met: failure_prob={phys.failure_prob:.2e} > {phys.error_budget:.2e}"
+    )
 
 
 @pytest.mark.parametrize(
@@ -263,9 +262,9 @@ def test_approx_qft_cheaper_than_textbook():
     for n in [8, 16, 32, 64]:
         tb = bench.logical_costs(bench.build_bloq(n=n, variant="textbook"))
         ap = bench.logical_costs(bench.build_bloq(n=n, variant="approx"))
-        assert (
-            ap.t_count_ftqc < tb.t_count_ftqc
-        ), f"n={n}: approx T_ftqc={ap.t_count_ftqc} >= textbook T_ftqc={tb.t_count_ftqc}"
+        assert ap.t_count_ftqc < tb.t_count_ftqc, (
+            f"n={n}: approx T_ftqc={ap.t_count_ftqc} >= textbook T_ftqc={tb.t_count_ftqc}"
+        )
 
 
 def test_selectswap_qrom_cheaper_at_large_n():
@@ -278,9 +277,9 @@ def test_selectswap_qrom_cheaper_at_large_n():
         swap = bench.logical_costs(
             bench.build_bloq(data_size=data_size, variant="selectswap")
         )
-        assert (
-            swap.t_count_ftqc < basic.t_count_ftqc
-        ), f"N={data_size}: selectswap T_ftqc={swap.t_count_ftqc} >= basic T_ftqc={basic.t_count_ftqc}"
+        assert swap.t_count_ftqc < basic.t_count_ftqc, (
+            f"N={data_size}: selectswap T_ftqc={swap.t_count_ftqc} >= basic T_ftqc={basic.t_count_ftqc}"
+        )
 
 
 def test_mul_more_expensive_than_add():
@@ -289,9 +288,9 @@ def test_mul_more_expensive_than_add():
     for n in [8, 16, 32]:
         add = bench.logical_costs(bench.build_bloq(n=n, op="add"))
         mul = bench.logical_costs(bench.build_bloq(n=n, op="mul"))
-        assert (
-            mul.t_count_ftqc > add.t_count_ftqc
-        ), f"n={n}: mul T_ftqc={mul.t_count_ftqc} <= add T_ftqc={add.t_count_ftqc}"
+        assert mul.t_count_ftqc > add.t_count_ftqc, (
+            f"n={n}: mul T_ftqc={mul.t_count_ftqc} <= add T_ftqc={add.t_count_ftqc}"
+        )
 
 
 def test_ftqc_overhead_for_rotation_heavy():
@@ -301,13 +300,13 @@ def test_ftqc_overhead_for_rotation_heavy():
     costs = bench.logical_costs(bench.build_bloq(n=32, variant="textbook"))
 
     assert costs.rotation_count > 0, "textbook QFT should have rotations"
-    assert (
-        costs.t_count_ftqc > costs.t_count_direct
-    ), f"t_ftqc={costs.t_count_ftqc} should be > t_direct={costs.t_count_direct}"
+    assert costs.t_count_ftqc > costs.t_count_direct, (
+        f"t_ftqc={costs.t_count_ftqc} should be > t_direct={costs.t_count_direct}"
+    )
     overhead = costs.t_count_ftqc / max(costs.t_count_direct, 1)
-    assert (
-        overhead > 5
-    ), f"FTQC overhead {overhead:.1f}x is suspiciously low for 435 rotations at eps=1e-10"
+    assert overhead > 5, (
+        f"FTQC overhead {overhead:.1f}x is suspiciously low for 435 rotations at eps=1e-10"
+    )
 
 
 def test_no_rotation_no_overhead():
@@ -316,6 +315,6 @@ def test_no_rotation_no_overhead():
     for op in ["add", "add_oop", "mul"]:
         costs = bench.logical_costs(bench.build_bloq(n=16, op=op))
         assert costs.rotation_count == 0, f"{op} should have no rotations"
-        assert (
-            costs.t_count_ftqc == costs.t_count_direct
-        ), f"{op}: t_ftqc={costs.t_count_ftqc} != t_direct={costs.t_count_direct}"
+        assert costs.t_count_ftqc == costs.t_count_direct, (
+            f"{op}: t_ftqc={costs.t_count_ftqc} != t_direct={costs.t_count_direct}"
+        )

@@ -35,7 +35,6 @@ from qref import SchemaV1
 from ftprims.algorithms._base import LogicalCosts
 from ftprims.config import DEFAULT_CONFIG, QREFConfig
 
-
 # ---------------------------------------------------------------------------
 # Symbolic cost formulas — APPROXIMATE ANALYTIC MODEL
 # ---------------------------------------------------------------------------
@@ -361,9 +360,7 @@ def check_symbolic_consistency(
     symbolic_vals: dict[str, int | str] = {}
     for name, expr in entry["resources"].items():
         try:
-            symbolic_vals[name] = int(
-                eval(expr, {"__builtins__": {}}, safe_ns)
-            )  # noqa: S307
+            symbolic_vals[name] = int(eval(expr, {"__builtins__": {}}, safe_ns))  # noqa: S307
         except Exception as exc:
             symbolic_vals[name] = f"eval error: {exc}"
 

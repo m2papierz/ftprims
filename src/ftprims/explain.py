@@ -152,8 +152,7 @@ def _primitive_observations(
     elif primitive == "qrom":
         if variant == "basic":
             obs.append(
-                "Basic lookup is qubit-efficient but offers no "
-                "ancilla-vs-T trade-off."
+                "Basic lookup is qubit-efficient but offers no ancilla-vs-T trade-off."
             )
         elif variant == "selectswap":
             obs.append(
@@ -206,8 +205,7 @@ def _physical_observations(physical: PhysicalCosts) -> list[str]:
 
     if physical.factory == "fifteen_to_one":
         obs.append(
-            "The 15-to-1 T-factory changes the space/time trade-off "
-            "compared to CCZ2T."
+            "The 15-to-1 T-factory changes the space/time trade-off compared to CCZ2T."
         )
 
     return obs

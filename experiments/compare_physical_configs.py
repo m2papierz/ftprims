@@ -28,7 +28,6 @@ from _style import PALETTE, apply_theme, light_grid, savefig
 from ftprims.algorithms import registry
 from ftprims.physical import PhysicalModelSpec, estimate_physical
 
-
 PRESETS: list[dict[str, str]] = [
     {"profile": "gidney_fowler", "data_block": "simple", "factory": "ccz2t"},
     {"profile": "gidney_fowler", "data_block": "compact", "factory": "ccz2t"},

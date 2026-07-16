@@ -118,9 +118,9 @@ def test_cli_rotation_eps_affects_ftqc():
     )
     t_tight = data_tight["logical"]["t_count_ftqc"]
     t_loose = data_loose["logical"]["t_count_ftqc"]
-    assert (
-        t_tight > t_loose
-    ), f"Tighter epsilon should give more T-gates: {t_tight} vs {t_loose}"
+    assert t_tight > t_loose, (
+        f"Tighter epsilon should give more T-gates: {t_tight} vs {t_loose}"
+    )
     # t_count_direct should be unchanged (no rotations involved)
     assert (
         data_tight["logical"]["t_count_direct"]

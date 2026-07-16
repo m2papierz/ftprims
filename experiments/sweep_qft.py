@@ -23,7 +23,6 @@ from _style import (
 from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 
-
 BITSIZES = [4, 8, 16, 32, 64, 128]
 VARIANTS = ["textbook", "approx"]
 

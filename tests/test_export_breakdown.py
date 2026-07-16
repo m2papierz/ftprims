@@ -10,7 +10,6 @@ from ftprims.breakdown import extract_structural_breakdown
 from ftprims.config import DEFAULT_CONFIG
 from ftprims.export import build_qref_program, save_qref
 
-
 QREF_CASES = [
     ("qft", dict(n=32, variant="textbook"), 16),
     ("qft", dict(n=32, variant="approx"), 16),
@@ -56,18 +55,18 @@ def test_qref_numeric_round_trip(name, params, port_size, tmp_path):
     routine = data["program"]
     resources = {r["name"]: r["value"] for r in routine["resources"]}
 
-    assert (
-        resources["T_gates_direct"] == costs.t_count_direct
-    ), f"QREF T_gates_direct={resources['T_gates_direct']} != {costs.t_count_direct}"
-    assert (
-        resources["T_gates_ftqc"] == costs.t_count_ftqc
-    ), f"QREF T_gates_ftqc={resources['T_gates_ftqc']} != {costs.t_count_ftqc}"
-    assert (
-        resources["n_qubits"] == costs.logical_qubits_estimate
-    ), f"QREF n_qubits={resources['n_qubits']} != {costs.logical_qubits_estimate}"
-    assert (
-        resources["rotations"] == costs.rotation_count
-    ), f"QREF rotations={resources['rotations']} != {costs.rotation_count}"
+    assert resources["T_gates_direct"] == costs.t_count_direct, (
+        f"QREF T_gates_direct={resources['T_gates_direct']} != {costs.t_count_direct}"
+    )
+    assert resources["T_gates_ftqc"] == costs.t_count_ftqc, (
+        f"QREF T_gates_ftqc={resources['T_gates_ftqc']} != {costs.t_count_ftqc}"
+    )
+    assert resources["n_qubits"] == costs.logical_qubits_estimate, (
+        f"QREF n_qubits={resources['n_qubits']} != {costs.logical_qubits_estimate}"
+    )
+    assert resources["rotations"] == costs.rotation_count, (
+        f"QREF rotations={resources['rotations']} != {costs.rotation_count}"
+    )
 
 
 def test_qref_yaml_validates_as_schema_v1(tmp_path):
@@ -156,8 +155,7 @@ def test_breakdown_per_item(key):
 
     for component, exp_dt, exp_rot, exp_ftqc in expected_items:
         assert component in actual, (
-            f"Missing component '{component}' in breakdown. "
-            f"Got: {list(actual.keys())}"
+            f"Missing component '{component}' in breakdown. Got: {list(actual.keys())}"
         )
         dt, rot, ftqc = actual[component]
         assert dt == exp_dt, f"{component}.direct_t: {dt} != {exp_dt}"
@@ -175,9 +173,9 @@ def test_breakdown_no_unexpected_components():
         bloq = bench.build_bloq(**params)
         items = extract_structural_breakdown(bloq)
         for item in items:
-            assert (
-                item.component in allowed
-            ), f"{key}: unknown component '{item.component}'"
+            assert item.component in allowed, (
+                f"{key}: unknown component '{item.component}'"
+            )
 
 
 def test_breakdown_all_items_nonnegative():
@@ -188,13 +186,13 @@ def test_breakdown_all_items_nonnegative():
         items = extract_structural_breakdown(bloq)
         for item in items:
             assert item.direct_t >= 0, f"{key}/{item.component}: negative direct_t"
-            assert (
-                item.rotation_count >= 0
-            ), f"{key}/{item.component}: negative rotation_count"
-            assert (
-                item.clifford_count >= 0
-            ), f"{key}/{item.component}: negative clifford_count"
+            assert item.rotation_count >= 0, (
+                f"{key}/{item.component}: negative rotation_count"
+            )
+            assert item.clifford_count >= 0, (
+                f"{key}/{item.component}: negative clifford_count"
+            )
             assert item.est_t_ftqc >= 0, f"{key}/{item.component}: negative est_t_ftqc"
-            assert (
-                item.invocations >= 0
-            ), f"{key}/{item.component}: negative invocations"
+            assert item.invocations >= 0, (
+                f"{key}/{item.component}: negative invocations"
+            )
