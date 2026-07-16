@@ -25,8 +25,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
-    "black[jupyter]>=26.1.0",
-    "isort>=8.0.0",
+    "ruff>=0.15.21",
     "pre-commit>=4.5.1",
     "pytest>=9.0.2",
 ]
@@ -43,18 +42,19 @@ python_files = ["test_*.py"]
 python_functions = ["test_*"]
 addopts = ["--import-mode=importlib"]
 
-[tool.isort]
-src_paths = [
-    "src/",
-    "experiments/",
-    "tests/",
-    "notebooks/",
-]
-profile = "black"
-line_length = 88
-lines_after_imports = 2
-
-[tool.black]
+# Single formatter + import sorter: ruff replaces black + isort. `ruff format`
+# is the black-compatible formatter (line-length 88, .py and .ipynb); the `I`
+# lint rule is the import sorter (isort). Both are internally consistent, so the
+# blank-line-after-imports disagreement black and isort had cannot recur — the
+# former isort `lines_after_imports = 2` is intentionally dropped.
+[tool.ruff]
 line-length = 88
-target-version = ["py311"]
-include = '\.pyi?$|\.ipynb$'
+target-version = "py311"
+src = ["src", "tests", "experiments", "notebooks"]
+
+[tool.ruff.lint]
+# Import sorting only (the isort replacement); no new lint gate is introduced.
+select = ["I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ftprims"]

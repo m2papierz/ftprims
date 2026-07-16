@@ -19,8 +19,8 @@ setup: install
 # ── Format ───────────────────────────────────────────────────────────────────
 
 fmt:
-	$(UV) run black src/ tests/ experiments/
-	$(UV) run isort src/ tests/ experiments/
+	$(UV) run ruff check --select I --fix src/ tests/ experiments/ notebooks/
+	$(UV) run ruff format src/ tests/ experiments/ notebooks/
 	@echo "  ✓ Formatted"
 
 # ── Test ─────────────────────────────────────────────────────────────────────
