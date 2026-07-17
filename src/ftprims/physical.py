@@ -26,10 +26,11 @@ from qualtran.surface_code import (
     PhysicalParameters,
     QECScheme,
     SimpleDataBlock,
+    get_ccz2t_costs_from_grid_search,
+    iter_ccz2t_factories,
 )
 
 from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
-
 
 _MAX_AUTO_DISTANCE = 99
 
@@ -211,4 +212,72 @@ def _evaluate(
         profile=spec.profile,
         data_block=spec.data_block,
         factory=spec.factory,
+    )
+
+
+# ── Parallel-factory grid search (GE19 parallel headline) ──────────────
+
+
+def estimate_physical_grid_search(
+    logical: LogicalCosts,
+    *,
+    n_factories: int = 1,
+    error_budget: float = 0.01,
+    phys_err: float = 1e-3,
+    cycle_time_us: float = 1.0,
+) -> PhysicalCosts:
+    """Estimate physical costs via Qualtran's CCZ2T grid search.
+
+    Wraps ``get_ccz2t_costs_from_grid_search`` with
+    ``iter_ccz2t_factories(n_factories=N)``, which co-optimises *N* parallel
+    magic-state factories against the data block — the configuration GE19
+    uses for its parallel headline (the single-``CCZ2TFactory``
+    :func:`estimate_physical` reproduces only the distillation-limited
+    1-factory row).
+
+    The Toffoli/And count is taken from ``logical.and_count`` (with any
+    ``raw_t`` folded in via the shared ``raw_t + 4·and`` convention, i.e. as
+    an equivalent Toffoli budget), and the result is normalised back into the
+    frozen ``PhysicalCosts`` record so it always carries ``failure_prob`` and
+    ``budget_satisfied``.
+
+    Parameters
+    ----------
+    logical:
+        Logical-level resource counts. ``and_count`` (Toffoli) drives the
+        gate budget; ``logical_qubits_estimate`` sets ``n_algo_qubits``.
+    n_factories:
+        Number of parallel magic-state factories to co-optimise.
+    error_budget:
+        Total logical error budget for the grid search.
+    phys_err:
+        Physical gate error rate (GE19: 1e-3).
+    cycle_time_us:
+        Surface-code cycle time in microseconds (GE19: 1.0).
+    """
+    if n_factories < 1:
+        raise ValueError(f"n_factories must be ≥ 1, got {n_factories}")
+
+    # Fold raw T into an equivalent Toffoli budget (4 T = 1 Toffoli) so the
+    # single-number grid search sees the full non-Clifford cost.
+    toffoli_equiv = logical.and_count + logical.raw_t // 4
+    summary, factory, data_block = get_ccz2t_costs_from_grid_search(
+        n_logical_gates=GateCounts(toffoli=toffoli_equiv),
+        n_algo_qubits=int(logical.logical_qubits_estimate),
+        phys_err=phys_err,
+        error_budget=error_budget,
+        cycle_time_us=cycle_time_us,
+        factory_iter=list(iter_ccz2t_factories(n_factories=n_factories)),
+    )
+    failure_prob = float(summary.failure_prob)
+    return PhysicalCosts(
+        physical_qubits=int(summary.footprint),
+        wall_time_us=float(summary.duration_hr) * 3_600_000_000,
+        code_distance=int(data_block.data_d),
+        error_budget=error_budget,
+        failure_prob=failure_prob,
+        budget_satisfied=failure_prob <= error_budget,
+        profile="gidney_fowler",
+        data_block="simple",
+        factory="ccz2t",
     )
