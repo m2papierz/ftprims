@@ -72,13 +72,21 @@ def beverland_reference_costs(
         n_logical_gates=GateCounts(**gate_counts),
         n_rotation_layers=n_rotation_layers,
     )
+
     rotation_model = BeverlandEtAlRotationCost
+
     c_min = beverland_et_al_model.minimum_time_steps(
-        error_budget=error_budget, alg=alg, rotation_model=rotation_model
+        error_budget=error_budget,
+        alg=alg,
+        rotation_model=rotation_model,
     )
+
     t_states = beverland_et_al_model.t_states(
-        error_budget=error_budget, alg=alg, rotation_model=rotation_model
+        error_budget=error_budget,
+        alg=alg,
+        rotation_model=rotation_model,
     )
+
     code_distance = beverland_et_al_model.code_distance(
         error_budget=error_budget,
         time_steps=time_steps_for_code_distance,
@@ -86,6 +94,7 @@ def beverland_reference_costs(
         qec_scheme=QECScheme.make_beverland_et_al(),
         physical_error=physical_error,
     )
+
     return BeverlandReferenceCosts(
         c_min=int(c_min),
         t_states=float(t_states),

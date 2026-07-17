@@ -36,12 +36,20 @@ def reproduce_2019_to_2025() -> DecompositionReproduction:
     rows = []
     for n_factories in _FACTORY_COUNTS:
         ge19 = estimate_physical_grid_search(
-            ge19_logical, n_factories=n_factories, error_budget=error_budget
+            ge19_logical,
+            n_factories=n_factories,
+            error_budget=error_budget,
         )
+
         g2025 = estimate_physical_grid_search(
-            g2025_logical, n_factories=n_factories, error_budget=error_budget
+            g2025_logical,
+            n_factories=n_factories,
+            error_budget=error_budget,
         )
+
         rows.append(DecompositionRow(n_factories=n_factories, ge19=ge19, g2025=g2025))
+
     return DecompositionReproduction(
-        error_budget=error_budget, factory_rows=tuple(rows)
+        error_budget=error_budget,
+        factory_rows=tuple(rows),
     )
