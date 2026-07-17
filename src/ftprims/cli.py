@@ -447,6 +447,54 @@ def dump_config(out: str | None) -> None:
         click.echo(text)
 
 
+@main.group()
+def reproduce() -> None:
+    """Reproduce published FTQC resource estimates and print the tables."""
+
+
+def _print_rows(rows) -> None:
+    """Render reproduction rows as an aligned comparison table."""
+    header = f"{'label':18} {'metric':18} {'reproduced':>14} {'target':>14} {'dev':>8}"
+    click.echo(header)
+    click.echo("-" * len(header))
+    for row in rows:
+        target = "-" if row.target is None else f"{row.target:14.4g}"
+        dev = "-" if row.deviation is None else f"{row.deviation:+7.1%}"
+        click.echo(
+            f"{row.label:18} {row.metric:18} {row.reproduced:14.4g} {target:>14} {dev:>8}"
+        )
+
+
+@reproduce.command("beverland")
+def reproduce_beverland_cmd() -> None:
+    """Beverland et al. (arXiv:2211.07629): three application data points."""
+    from ftprims.references import reproduce_beverland
+
+    click.echo("Beverland et al. (arXiv:2211.07629)")
+    _print_rows(reproduce_beverland().rows)
+
+
+@reproduce.command("ge19")
+def reproduce_ge19_cmd() -> None:
+    """GE19 (arXiv:1905.09749v3): factor 2048-bit RSA."""
+    from ftprims.references import reproduce_ge19_logical, reproduce_ge19_physical
+
+    click.echo("GE19 (arXiv:1905.09749v3) — logical reconciliation")
+    _print_rows(reproduce_ge19_logical().rows)
+    click.echo()
+    click.echo("GE19 (arXiv:1905.09749v3) — physical rows")
+    _print_rows(reproduce_ge19_physical().rows)
+
+
+@reproduce.command("decomposition")
+def reproduce_decomposition_cmd() -> None:
+    """2019 → 2025 decomposition (arXiv:2505.15917)."""
+    from ftprims.references import reproduce_2019_to_2025
+
+    click.echo("2019 → 2025 decomposition (arXiv:2505.15917)")
+    _print_rows(reproduce_2019_to_2025().rows)
+
+
 def _parse_params(raw: tuple[str, ...]) -> dict[str, int | float | str]:
     """Parse 'key=value' strings into a typed dict."""
     params: dict[str, int | float | str] = {}
