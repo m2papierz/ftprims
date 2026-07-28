@@ -59,11 +59,8 @@ export:
 
 sweeps:
 	@mkdir -p results/sweeps results/charts
-	$(UV) run python experiments/sweep_qft.py
-	$(UV) run python experiments/sweep_qpe.py
-	$(UV) run python experiments/sweep_arithmetic.py
-	$(UV) run python experiments/sweep_qrom.py
-	$(UV) run python experiments/compare_physical_configs.py qft n=16 variant=textbook
+	$(UV) run python experiments/sweep_rotation_epsilon.py
+	$(UV) run python experiments/sweep_ge19_physical.py
 	$(UV) run python experiments/landscape.py
 
 # ── Clean ────────────────────────────────────────────────────────────────────

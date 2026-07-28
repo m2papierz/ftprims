@@ -156,15 +156,21 @@ fi
 # Experiment sweeps
 section "EXPERIMENT SWEEPS (CSV + charts)"
 
-$PYTHON experiments/sweep_qft.py        && ok "sweep_qft"        || fail "sweep_qft"
-$PYTHON experiments/sweep_qpe.py        && ok "sweep_qpe"        || fail "sweep_qpe"
-$PYTHON experiments/sweep_arithmetic.py && ok "sweep_arithmetic" || fail "sweep_arithmetic"
-$PYTHON experiments/sweep_qrom.py       && ok "sweep_qrom"       || fail "sweep_qrom"
+# Assumption sweeps (see ASSUMPTIONS.md).
+$PYTHON experiments/sweep_rotation_epsilon.py \
+&& ok "sweep_rotation_epsilon" || fail "sweep_rotation_epsilon"
 
-$PYTHON experiments/compare_physical_configs.py qft n=16 variant=textbook \
-&& ok "compare_physical_configs" || fail "compare_physical_configs"
+$PYTHON experiments/sweep_ge19_physical.py \
+&& ok "sweep_ge19_physical"    || fail "sweep_ge19_physical"
 
 $PYTHON experiments/landscape.py && ok "landscape" || fail "landscape"
+
+# Published-estimate reproductions
+section "REFERENCE REPRODUCTIONS"
+
+$FTPRIMS reproduce beverland     && ok "reproduce beverland"     || fail "reproduce beverland"
+$FTPRIMS reproduce ge19          && ok "reproduce ge19"          || fail "reproduce ge19"
+$FTPRIMS reproduce decomposition && ok "reproduce decomposition" || fail "reproduce decomposition"
 
 # Config dump (sanity)
 section "CONFIG"
