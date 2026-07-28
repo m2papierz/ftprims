@@ -487,12 +487,26 @@ def reproduce_ge19_cmd() -> None:
 
 
 @reproduce.command("decomposition")
-def reproduce_decomposition_cmd() -> None:
-    """2019 → 2025 decomposition (arXiv:2505.15917)."""
+@click.option(
+    "--convention",
+    type=click.Choice(["per_run", "expected", "both"]),
+    default="both",
+    show_default=True,
+    help=(
+        "Toffoli-count normalisation. GE19 Table 1 is per-run; G2025 Table 5 is "
+        "expected over E(shots)=9.2. 'both' prints each."
+    ),
+)
+def reproduce_decomposition_cmd(convention: str) -> None:
+    """2019 => 2025 decomposition (arXiv:2505.15917)."""
     from ftprims.references import reproduce_2019_to_2025
+    from ftprims.references.decomposition import CONVENTIONS
 
-    click.echo("2019 → 2025 decomposition (arXiv:2505.15917)")
-    _print_rows(reproduce_2019_to_2025().rows)
+    conventions = CONVENTIONS if convention == "both" else (convention,)
+    for conv in conventions:
+        click.echo(f"2019 => 2025 decomposition (arXiv:2505.15917) — {conv}")
+        _print_rows(reproduce_2019_to_2025(conv).rows)
+        click.echo()
 
 
 def _parse_params(raw: tuple[str, ...]) -> dict[str, int | float | str]:
