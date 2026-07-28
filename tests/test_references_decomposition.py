@@ -1,9 +1,7 @@
-"""2019 → 2025 decomposition (arXiv:2505.15917).
+"""2019 -> 2025 decomposition (arXiv:2505.15917).
 
-Asserts the decomposition rows computed once by ``reproduce_2019_to_2025()``:
-G2025's counts through the same CCZ2T model, the structural gap to the published
-< 1M headline, and the algorithmic (logical-qubit) reduction the model does
-capture. Tolerances come from ``G2025_TOL`` in ``values.py``.
+Both Toffoli conventions are exercised; running only one would hide the
+mismatch rather than bound it. See ASSUMPTIONS.md §3.
 """
 
 from __future__ import annotations
@@ -11,55 +9,67 @@ from __future__ import annotations
 import pytest
 
 from ftprims.references import reproduce_2019_to_2025
-from ftprims.references.values import G2025_FTPRIMS, G2025_TOL
+from ftprims.references.decomposition import CONVENTIONS, _toffoli_counts
+from ftprims.references.values import G2025, G2025_FTPRIMS, G2025_TOL, GE19
+
+_FACTORY_COUNTS = (1, 16, 28)
 
 
 @pytest.fixture(scope="module")
-def decomposition():
-    return reproduce_2019_to_2025()
+def decompositions():
+    return {conv: reproduce_2019_to_2025(conv) for conv in CONVENTIONS}
 
 
-@pytest.mark.parametrize("n_factories", [1, 16])
-def test_g2025_through_model_reproduces(decomposition, n_factories):
-    """G2025 counts through the same CCZ2T model reproduce the achieved numbers.
+def test_conventions_normalise_as_documented():
+    """Each convention puts both papers' Toffoli counts on one footing."""
+    shots = G2025["expected_shots"]
+    retry = GE19["physical_rows"]["table3_authoritative"]["retry"]
+    assert shots == 9.2  # arXiv:2505.15917 Table 5, n=2048 "E(shots)"
 
-    rel=0.20 (G2025_TOL): guards against gross drift, not a paper target — the
-    paper's < 1M is explicitly NOT reproducible by this model (yoked codes +
-    cultivation are out of scope), so we assert only that the model lands where
-    it landed live: 1-factory 3.68M, 16-factory 5.19M.
+    ge19_pr, g2025_pr = _toffoli_counts("per_run")
+    assert ge19_pr == GE19["toffoli_count"]
+    assert g2025_pr == pytest.approx(G2025["toffoli_count"] / shots)
+
+    ge19_ex, g2025_ex = _toffoli_counts("expected")
+    assert ge19_ex == pytest.approx(GE19["toffoli_count"] / (1 - retry))
+    assert g2025_ex == G2025["toffoli_count"]
+
+
+@pytest.mark.parametrize("convention", CONVENTIONS)
+@pytest.mark.parametrize("n_factories", _FACTORY_COUNTS)
+def test_g2025_through_model_reproduces(decompositions, convention, n_factories):
+    """G2025 counts through the model reproduce the achieved numbers.
+
+    rel=0.20 guards drift only; the paper's < 1M is not reproducible here.
     """
-    g2025 = decomposition.by_factories(n_factories).g2025
-    key = (
-        "g2025_through_model_1f_qubits_M"
-        if n_factories == 1
-        else "g2025_through_model_16f_qubits_M"
-    )
+    g2025 = decompositions[convention].by_factories(n_factories).g2025
+    expected = G2025_FTPRIMS[convention][f"g2025_{n_factories}f_qubits_M"]
     assert g2025.physical_qubits / 1e6 == pytest.approx(
-        G2025_FTPRIMS[key], rel=G2025_TOL["rel_qubits"]
+        expected, rel=G2025_TOL["rel_qubits"]
     )
 
 
-def test_g2025_below_published_headline(decomposition):
-    """The model CANNOT reach G2025's published < 1M — that gap is the finding.
-
-    Even at 1 factory the ftprims CCZ2T model gives millions of physical qubits;
-    the published < 1e6 requires yoked surface codes + magic state cultivation,
-    which this cost model structurally cannot represent. Asserting the model
-    stays well above 1e6 documents the structural gap.
-    """
-    g2025 = decomposition.by_factories(1).g2025
+@pytest.mark.parametrize("convention", CONVENTIONS)
+def test_g2025_below_published_headline(decompositions, convention):
+    """The model cannot reach G2025's published < 1M — that gap is the finding."""
+    g2025 = decompositions[convention].by_factories(1).g2025
     assert g2025.physical_qubits > 2e6  # far above the paper's < 1e6 headline
 
 
-@pytest.mark.parametrize("n_factories", [1, 16])
-def test_2019_to_2025_algorithmic_ratio(decomposition, n_factories):
-    """The algorithmic (logical-qubit) reduction the model DOES capture.
+@pytest.mark.parametrize("convention", CONVENTIONS)
+@pytest.mark.parametrize("n_factories", _FACTORY_COUNTS)
+def test_2019_to_2025_algorithmic_ratio(decompositions, convention, n_factories):
+    """The algorithmic reduction the model captures.
 
-    Feeding GE19 vs G2025 counts through the SAME factory count (apples-to-
-    apples) yields the algorithmic share. Asserted in [2.5, 6.0] (G2025_TOL):
-    the honest range spanned by the factory-count sweep — ~3.0x at 16 factories,
-    ~4.9x at 1 factory. The residual reduction down to the published < 1M is the
-    unmodelable QEC stack.
+    Asserted in [2.5, 6.0]: the achieved span across factory counts
+    {1, 16, 28} x conventions {per_run, expected} is 2.63x .. 5.64x.
     """
-    ratio = decomposition.by_factories(n_factories).algorithmic_ratio
+    ratio = decompositions[convention].by_factories(n_factories).algorithmic_ratio
     assert G2025_TOL["algo_ratio_lo"] <= ratio <= G2025_TOL["algo_ratio_hi"]
+
+
+def test_convention_choice_is_recorded(decompositions):
+    """A decomposition carries the convention it was computed under."""
+    for conv, d in decompositions.items():
+        assert d.convention == conv
+        assert d.error_budget == G2025_FTPRIMS["error_budget"] == 0.31
