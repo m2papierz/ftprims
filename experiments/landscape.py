@@ -3,8 +3,9 @@
 Beverland-style log-log plot of physical_qubits vs wall_time with convex
 hulls per primitive variant.
 
-Output:
+Outputs:
   results/charts/landscape.png
+  landscape.png             (repo-root copy embedded by README)
 
 """
 
@@ -19,16 +20,16 @@ from scipy.spatial import ConvexHull
 
 from _style import apply_theme, light_grid, savefig
 
+# Full 2 x 3 x 2 product: 12 configurations.
+PROFILES = ("gidney_fowler", "beverland")
+DATA_BLOCKS = ("simple", "compact", "fast")
+FACTORIES = ("ccz2t", "fifteen_to_one")
+
 CONFIGS = [
-    dict(profile="gidney_fowler", data_block="simple", factory="ccz2t"),
-    dict(profile="gidney_fowler", data_block="compact", factory="ccz2t"),
-    dict(profile="gidney_fowler", data_block="fast", factory="ccz2t"),
-    dict(profile="gidney_fowler", data_block="simple", factory="fifteen_to_one"),
-    dict(profile="gidney_fowler", data_block="fast", factory="fifteen_to_one"),
-    dict(profile="beverland", data_block="simple", factory="ccz2t"),
-    dict(profile="beverland", data_block="fast", factory="ccz2t"),
-    dict(profile="beverland", data_block="simple", factory="fifteen_to_one"),
-    dict(profile="beverland", data_block="fast", factory="fifteen_to_one"),
+    dict(profile=p, data_block=d, factory=f)
+    for p in PROFILES
+    for d in DATA_BLOCKS
+    for f in FACTORIES
 ]
 
 # ── Visually distinct domains ─────────────────────────────────────────
@@ -131,7 +132,7 @@ _TIME_MARKERS = [
 ]
 
 
-def plot(results: dict[str, list[tuple[float, float]]], path: Path) -> None:
+def plot(results: dict[str, list[tuple[float, float]]], *paths: Path) -> None:
     fig, ax = plt.subplots(figsize=(14, 8.5))
 
     legend_handles: list[Line2D] = []
@@ -256,7 +257,7 @@ def plot(results: dict[str, list[tuple[float, float]]], path: Path) -> None:
     )
 
     plt.tight_layout()
-    savefig(fig, path)
+    savefig(fig, *paths)
 
 
 def main() -> None:
@@ -264,7 +265,8 @@ def main() -> None:
     chart_dir = Path("results/charts")
     chart_dir.mkdir(parents=True, exist_ok=True)
     results = collect()
-    plot(results, chart_dir / "landscape.png")
+    # The repo-root copy is what README embeds; write both so they cannot drift.
+    plot(results, chart_dir / "landscape.png", Path("landscape.png"))
 
 
 if __name__ == "__main__":
