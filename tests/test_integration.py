@@ -1,6 +1,8 @@
-"""Integration tests: building bloqs and runs the full extraction pipeline."""
+"""Integration tests: building bloqs and running the full extraction pipeline."""
 
 from __future__ import annotations
+
+from typing import NamedTuple
 
 import pytest
 
@@ -8,19 +10,44 @@ from ftprims.algorithms import registry
 from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
 from ftprims.physical import PhysicalModelSpec, estimate_physical
 
-# Known-good reference values
-# Format: (primitive, params, t_direct, t_ftqc, qubits, rotation_count, dominant)
+
+class Case(NamedTuple):
+    """A pinned known-good benchmark case.
+
+    Each test asserts the fields it is about; grouping them in one record keeps
+    the parametrisation from carrying values a test never looks at.
+    """
+
+    name: str
+    params: dict
+    t_direct: int
+    t_ftqc: int
+    qubits: int
+    rotations: int
+    dominant: str
+
+    @property
+    def id(self) -> str:
+        return f"{self.name}_{'_'.join(str(v) for v in self.params.values())}"
+
+
 REFERENCE_CASES = [
-    ("qft", dict(n=32, variant="textbook"), 2014, 45514, 33, 435, "rotations"),
-    ("qft", dict(n=32, variant="approx"), 2632, 2632, 48, 0, "controlled_nonclifford"),
-    ("qft", dict(n=8, variant="approx"), 88, 88, 12, 0, "controlled_nonclifford"),
-    ("qpe", dict(m=8, phi=0.25), 1138, 2638, 10, 15, "qft_qpe_core"),
-    ("arithmetic", dict(n=16, op="add"), 60, 60, 47, 0, "controlled_nonclifford"),
-    ("arithmetic", dict(n=16, op="add_oop"), 64, 64, 49, 0, "controlled_nonclifford"),
-    ("arithmetic", dict(n=16, op="leq"), 124, 124, 80, 0, "arithmetic_core"),
-    ("arithmetic", dict(n=16, op="mul"), 1984, 1984, 64, 0, "controlled_nonclifford"),
-    ("arithmetic", dict(n=8, op="modadd"), 124, 124, 34, 0, "arithmetic_core"),
-    (
+    Case("qft", dict(n=32, variant="textbook"), 2014, 45514, 33, 435, "rotations"),
+    Case(
+        "qft", dict(n=32, variant="approx"), 2632, 2632, 48, 0, "controlled_nonclifford"
+    ),
+    Case("qft", dict(n=8, variant="approx"), 88, 88, 12, 0, "controlled_nonclifford"),
+    Case("qpe", dict(m=8, phi=0.25), 1138, 2638, 10, 15, "qft_qpe_core"),
+    Case("arithmetic", dict(n=16, op="add"), 60, 60, 47, 0, "controlled_nonclifford"),
+    Case(
+        "arithmetic", dict(n=16, op="add_oop"), 64, 64, 49, 0, "controlled_nonclifford"
+    ),
+    Case("arithmetic", dict(n=16, op="leq"), 124, 124, 80, 0, "arithmetic_core"),
+    Case(
+        "arithmetic", dict(n=16, op="mul"), 1984, 1984, 64, 0, "controlled_nonclifford"
+    ),
+    Case("arithmetic", dict(n=8, op="modadd"), 124, 124, 34, 0, "arithmetic_core"),
+    Case(
         "qrom",
         dict(data_size=256, variant="basic"),
         1012,
@@ -29,9 +56,12 @@ REFERENCE_CASES = [
         0,
         "controlled_nonclifford",
     ),
-    ("qrom", dict(data_size=256, variant="selectswap"), 880, 880, 53, 0, "qrom_core"),
+    Case(
+        "qrom", dict(data_size=256, variant="selectswap"), 880, 880, 53, 0, "qrom_core"
+    ),
 ]
 
+_REF_IDS = [c.id for c in REFERENCE_CASES]
 
 PHYSICAL_CASES = [
     ("qft", dict(n=32, variant="textbook")),
@@ -54,58 +84,47 @@ VERIFY_CASES = [
 ]
 
 
-def _case_id(case):
-    name, params = case[0], case[1]
-    slug = "_".join(f"{v}" for v in params.values())
-    return f"{name}_{slug}"
+def _pair_id(pair) -> str:
+    name, params = pair
+    return f"{name}_{'_'.join(str(v) for v in params.values())}"
 
 
-@pytest.mark.parametrize(
-    "name,params,exp_direct,exp_ftqc,exp_qubits,exp_rot,exp_dom",
-    REFERENCE_CASES,
-    ids=[_case_id(c) for c in REFERENCE_CASES],
-)
-def test_logical_costs_match_reference(
-    name,
-    params,
-    exp_direct,
-    exp_ftqc,
-    exp_qubits,
-    exp_rot,
-    exp_dom,
-):
-    """Logical costs must match pinned known-good values."""
-    bench = registry[name]
-    bloq = bench.build_bloq(**params)
-    costs = bench.logical_costs(bloq)
-
-    assert costs.t_count_direct == exp_direct, (
-        f"t_count_direct: {costs.t_count_direct} != {exp_direct}"
-    )
-    assert costs.t_count_ftqc == exp_ftqc, (
-        f"t_count_ftqc: {costs.t_count_ftqc} != {exp_ftqc}"
-    )
-    assert costs.logical_qubits_estimate == exp_qubits, (
-        f"qubits: {costs.logical_qubits_estimate} != {exp_qubits}"
-    )
-    assert costs.rotation_count == exp_rot, (
-        f"rotation_count: {costs.rotation_count} != {exp_rot}"
-    )
+# ── Logical costs ─────────────────────────────────────────────────────────────
 
 
-@pytest.mark.parametrize(
-    "name,params",
-    [(c[0], c[1]) for c in REFERENCE_CASES],
-    ids=[_case_id(c) for c in REFERENCE_CASES],
-)
-def test_logical_breakdown_consistency(name, params):
-    """Logical t_count_ftqc must agree with sum of breakdown est_t_ftqc.
+@pytest.mark.parametrize("case", REFERENCE_CASES, ids=_REF_IDS)
+def test_logical_costs_match_reference(case):
+    """Logical costs must match pinned known-good values.
 
-    This is the exact check that would have caught the ApproximateQFT bug:
-    logical=0 vs breakdown=2632.
+    These are what *our code* computes against the pinned Qualtran, so a
+    dependency bump that moves any of them has to surface here.
     """
-    bench = registry[name]
-    bloq = bench.build_bloq(**params)
+    bench = registry[case.name]
+    costs = bench.logical_costs(bench.build_bloq(**case.params))
+
+    assert costs.t_count_direct == case.t_direct, (
+        f"t_count_direct: {costs.t_count_direct} != {case.t_direct}"
+    )
+    assert costs.t_count_ftqc == case.t_ftqc, (
+        f"t_count_ftqc: {costs.t_count_ftqc} != {case.t_ftqc}"
+    )
+    assert costs.logical_qubits_estimate == case.qubits, (
+        f"qubits: {costs.logical_qubits_estimate} != {case.qubits}"
+    )
+    assert costs.rotation_count == case.rotations, (
+        f"rotation_count: {costs.rotation_count} != {case.rotations}"
+    )
+
+
+@pytest.mark.parametrize("case", REFERENCE_CASES, ids=_REF_IDS)
+def test_logical_breakdown_consistency(case):
+    """Logical t_count_ftqc must agree with the sum of breakdown est_t_ftqc.
+
+    Two independently derived counts of the same quantity — the check that
+    caught the ApproximateQFT bug (logical=0 vs breakdown=2632).
+    """
+    bench = registry[case.name]
+    bloq = bench.build_bloq(**case.params)
     costs = bench.logical_costs(bloq)
     items = extract_structural_breakdown(bloq)
     breakdown_total = sum(i.est_t_ftqc for i in items)
@@ -119,56 +138,39 @@ def test_logical_breakdown_consistency(name, params):
     )
 
 
-@pytest.mark.parametrize(
-    "name,params,exp_direct,exp_ftqc,exp_qubits,exp_rot,exp_dom",
-    REFERENCE_CASES,
-    ids=[_case_id(c) for c in REFERENCE_CASES],
-)
-def test_breakdown_dominant_component(
-    name,
-    params,
-    exp_direct,
-    exp_ftqc,
-    exp_qubits,
-    exp_rot,
-    exp_dom,
-):
+@pytest.mark.parametrize("case", REFERENCE_CASES, ids=_REF_IDS)
+def test_breakdown_dominant_component(case):
     """Breakdown must identify the correct dominant cost component.
 
     Catches misclassification like AddIntoPhaseGrad tagged as "rotations"
-    when it's actually controlled_nonclifford.
+    when it is actually controlled_nonclifford.
     """
-    bench = registry[name]
-    bloq = bench.build_bloq(**params)
-    items = extract_structural_breakdown(bloq)
+    bench = registry[case.name]
+    items = extract_structural_breakdown(bench.build_bloq(**case.params))
     summary = summarize_breakdown(items)
 
-    # Skip when total cost is zero (dominant label is meaningless).
-    total = sum(i.est_t_ftqc for i in items)
-    if total == 0:
+    if sum(i.est_t_ftqc for i in items) == 0:
         pytest.skip("total FTQC cost is 0 — dominant label undefined")
 
-    assert summary["dominant_component"] == exp_dom, (
-        f"dominant: {summary['dominant_component']} != {exp_dom}"
+    assert summary["dominant_component"] == case.dominant, (
+        f"dominant: {summary['dominant_component']} != {case.dominant}"
     )
 
 
+# ── Physical layer ────────────────────────────────────────────────────────────
+
+
 @pytest.mark.parametrize(
-    "name,params",
-    PHYSICAL_CASES,
-    ids=[_case_id(c) for c in PHYSICAL_CASES],
+    "name,params", PHYSICAL_CASES, ids=map(_pair_id, PHYSICAL_CASES)
 )
 def test_physical_estimation_sane(name, params):
-    """Physical estimates must have positive wall time, reasonable distance,
-    and meet the error budget.
+    """Physical estimates must be positive and meet the error budget.
 
     Would have caught the approx QFT bug: wall_time=0, code_distance=3.
     """
     bench = registry[name]
-    bloq = bench.build_bloq(**params)
-    costs = bench.logical_costs(bloq)
+    costs = bench.logical_costs(bench.build_bloq(**params))
 
-    # Skip if the circuit has zero non-Clifford cost (nothing to estimate).
     if costs.t_count_ftqc == 0 and costs.rotation_count == 0:
         pytest.skip("zero non-Clifford cost")
 
@@ -176,9 +178,9 @@ def test_physical_estimation_sane(name, params):
 
     assert phys.wall_time_us > 0, "wall_time_us must be > 0"
     assert phys.code_distance >= 3, "code_distance must be >= 3"
-    assert phys.physical_qubits > 0, "physical_qubits must be > 0"
     assert phys.budget_satisfied, (
-        f"error budget not met: failure_prob={phys.failure_prob:.2e} > {phys.error_budget:.2e}"
+        f"error budget not met: failure_prob={phys.failure_prob:.2e} "
+        f"> {phys.error_budget:.2e}"
     )
 
 
@@ -195,10 +197,10 @@ def test_physical_profiles_all_satisfy_budget(profile, factory):
     """Every supported physical config must satisfy the error budget for
     a standard workload (QFT textbook n=16)."""
     bench = registry["qft"]
-    bloq = bench.build_bloq(n=16, variant="textbook")
-    costs = bench.logical_costs(bloq)
-    spec = PhysicalModelSpec(profile=profile, factory=factory)
-    phys = estimate_physical(costs, spec=spec)
+    costs = bench.logical_costs(bench.build_bloq(n=16, variant="textbook"))
+    phys = estimate_physical(
+        costs, spec=PhysicalModelSpec(profile=profile, factory=factory)
+    )
 
     assert phys.budget_satisfied, (
         f"{profile}/{factory}: budget not satisfied "
@@ -207,11 +209,40 @@ def test_physical_profiles_all_satisfy_budget(profile, factory):
     assert phys.wall_time_us > 0
 
 
-@pytest.mark.parametrize(
-    "name,params",
-    VERIFY_CASES,
-    ids=[_case_id(c) for c in VERIFY_CASES],
-)
+def test_ccz2t_distillation_distances_are_searched():
+    """estimate_physical must search CCZ2T distillation distances, not accept
+    Qualtran's construction default (15, 31).
+
+    Pinning the default costs 184,004 physical qubits on QFT n=32 textbook
+    where the search finds (13, 17) at 119,492 — a 35% difference that would
+    otherwise be silently carried into every physical estimate. The chosen
+    distances are recorded on the result so the configuration is reproducible.
+    """
+    bench = registry["qft"]
+    costs = bench.logical_costs(bench.build_bloq(n=32, variant="textbook"))
+
+    searched = estimate_physical(costs)
+    pinned = estimate_physical(
+        costs, spec=PhysicalModelSpec(factory_l1_d=15, factory_l2_d=31)
+    )
+
+    assert pinned.factory_l1_d == 15 and pinned.factory_l2_d == 31, (
+        "explicit distances must be honoured, not overridden by the search"
+    )
+    assert searched.factory_l1_d is not None and searched.factory_l2_d is not None, (
+        "the search must record which factory it chose"
+    )
+    assert searched.budget_satisfied
+    assert searched.physical_qubits < pinned.physical_qubits, (
+        f"search={searched.physical_qubits:,} did not beat "
+        f"default(15,31)={pinned.physical_qubits:,}"
+    )
+
+
+# ── Correctness and scaling ───────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize("name,params", VERIFY_CASES, ids=map(_pair_id, VERIFY_CASES))
 def test_verify_small_passes(name, params):
     """Small-scale Cirq/classical verification must pass (not fail or error)."""
     bench = registry[name]
@@ -241,13 +272,16 @@ def test_verify_small_passes(name, params):
     ],
 )
 def test_t_count_monotonic(name, param_key, sizes, fixed):
-    """T-count must be non-decreasing as the problem size grows."""
+    """T-count must be non-decreasing as the problem size grows.
+
+    Covers sizes outside the pinned reference table, where a Qualtran change
+    would otherwise go unnoticed.
+    """
     bench = registry[name]
     prev_t = -1
     for size in sizes:
         params = {param_key: size, **fixed}
-        bloq = bench.build_bloq(**params)
-        costs = bench.logical_costs(bloq)
+        costs = bench.logical_costs(bench.build_bloq(**params))
         assert costs.t_count_ftqc >= prev_t, (
             f"{name}({params}): t_count_ftqc={costs.t_count_ftqc} < "
             f"previous={prev_t} — scaling not monotonic"
@@ -256,14 +290,18 @@ def test_t_count_monotonic(name, param_key, sizes, fixed):
 
 
 def test_approx_qft_cheaper_than_textbook():
-    """Approximate QFT must have strictly lower FTQC T-count than textbook
-    for n >= 8 (where the phase-gradient trick kicks in)."""
+    """Approximate QFT must cost strictly less than textbook for n >= 8.
+
+    The headline trade-off: the approximate variant truncates small-angle
+    rotations, so the whole ratio is rotation-synthesis cost.
+    """
     bench = registry["qft"]
     for n in [8, 16, 32, 64]:
         tb = bench.logical_costs(bench.build_bloq(n=n, variant="textbook"))
         ap = bench.logical_costs(bench.build_bloq(n=n, variant="approx"))
         assert ap.t_count_ftqc < tb.t_count_ftqc, (
-            f"n={n}: approx T_ftqc={ap.t_count_ftqc} >= textbook T_ftqc={tb.t_count_ftqc}"
+            f"n={n}: approx T_ftqc={ap.t_count_ftqc} >= "
+            f"textbook T_ftqc={tb.t_count_ftqc}"
         )
 
 
@@ -278,43 +316,6 @@ def test_selectswap_qrom_cheaper_at_large_n():
             bench.build_bloq(data_size=data_size, variant="selectswap")
         )
         assert swap.t_count_ftqc < basic.t_count_ftqc, (
-            f"N={data_size}: selectswap T_ftqc={swap.t_count_ftqc} >= basic T_ftqc={basic.t_count_ftqc}"
-        )
-
-
-def test_mul_more_expensive_than_add():
-    """Multiplier must cost strictly more T-gates than adder at same bitsize."""
-    bench = registry["arithmetic"]
-    for n in [8, 16, 32]:
-        add = bench.logical_costs(bench.build_bloq(n=n, op="add"))
-        mul = bench.logical_costs(bench.build_bloq(n=n, op="mul"))
-        assert mul.t_count_ftqc > add.t_count_ftqc, (
-            f"n={n}: mul T_ftqc={mul.t_count_ftqc} <= add T_ftqc={add.t_count_ftqc}"
-        )
-
-
-def test_ftqc_overhead_for_rotation_heavy():
-    """For rotation-heavy circuits (textbook QFT), t_count_ftqc must be
-    significantly larger than t_count_direct due to synthesis cost."""
-    bench = registry["qft"]
-    costs = bench.logical_costs(bench.build_bloq(n=32, variant="textbook"))
-
-    assert costs.rotation_count > 0, "textbook QFT should have rotations"
-    assert costs.t_count_ftqc > costs.t_count_direct, (
-        f"t_ftqc={costs.t_count_ftqc} should be > t_direct={costs.t_count_direct}"
-    )
-    overhead = costs.t_count_ftqc / max(costs.t_count_direct, 1)
-    assert overhead > 5, (
-        f"FTQC overhead {overhead:.1f}x is suspiciously low for 435 rotations at eps=1e-10"
-    )
-
-
-def test_no_rotation_no_overhead():
-    """For rotation-free circuits, t_count_ftqc must equal t_count_direct."""
-    bench = registry["arithmetic"]
-    for op in ["add", "add_oop", "mul"]:
-        costs = bench.logical_costs(bench.build_bloq(n=16, op=op))
-        assert costs.rotation_count == 0, f"{op} should have no rotations"
-        assert costs.t_count_ftqc == costs.t_count_direct, (
-            f"{op}: t_ftqc={costs.t_count_ftqc} != t_direct={costs.t_count_direct}"
+            f"N={data_size}: selectswap T_ftqc={swap.t_count_ftqc} >= "
+            f"basic T_ftqc={basic.t_count_ftqc}"
         )

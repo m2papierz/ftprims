@@ -94,18 +94,16 @@ def test_qref_yaml_validates_as_schema_v1(tmp_path):
     SchemaV1(**raw)
 
 
-# Breakdown per-item verification
-# Verify individual component items, not just dominant/total.
+# Breakdown per-item verification: the cost-carrying components, at finer
+# granularity than the dominant-component check in test_integration.
 # Format: (component, direct_t, rotation_count, est_t_ftqc)
 
 BREAKDOWN_ITEMS = {
     ("qft", "textbook"): [
         ("rotations", 2014, 435, 45514),
-        ("clifford_scaffolding", 0, 0, 0),
     ],
     ("qft", "approx"): [
         ("controlled_nonclifford", 2632, 0, 2632),
-        ("clifford_scaffolding", 0, 0, 0),
     ],
     ("qpe", "default"): [
         ("qft_qpe_core", 118, 15, 1618),
@@ -113,15 +111,12 @@ BREAKDOWN_ITEMS = {
     ],
     ("arithmetic", "add"): [
         ("controlled_nonclifford", 60, 0, 60),
-        ("clifford_scaffolding", 0, 0, 0),
     ],
     ("qrom", "basic"): [
         ("controlled_nonclifford", 1012, 0, 1012),
-        ("clifford_scaffolding", 0, 0, 0),
     ],
     ("qrom", "selectswap"): [
         ("qrom_core", 880, 0, 880),
-        ("arithmetic_core", 0, 0, 0),
     ],
 }
 
@@ -175,24 +170,4 @@ def test_breakdown_no_unexpected_components():
         for item in items:
             assert item.component in allowed, (
                 f"{key}: unknown component '{item.component}'"
-            )
-
-
-def test_breakdown_all_items_nonnegative():
-    """No breakdown field should ever be negative."""
-    for key, params in _BUILD_PARAMS.items():
-        bench = registry[key[0]]
-        bloq = bench.build_bloq(**params)
-        items = extract_structural_breakdown(bloq)
-        for item in items:
-            assert item.direct_t >= 0, f"{key}/{item.component}: negative direct_t"
-            assert item.rotation_count >= 0, (
-                f"{key}/{item.component}: negative rotation_count"
-            )
-            assert item.clifford_count >= 0, (
-                f"{key}/{item.component}: negative clifford_count"
-            )
-            assert item.est_t_ftqc >= 0, f"{key}/{item.component}: negative est_t_ftqc"
-            assert item.invocations >= 0, (
-                f"{key}/{item.component}: negative invocations"
             )

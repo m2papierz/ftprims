@@ -27,25 +27,17 @@ def _run_cli(*args: str) -> dict:
     return json.loads("\n".join(lines[json_start:]))
 
 
+# Two cases prove the property: one rotation-heavy (t_ftqc diverges from
+# t_direct), one rotation-free (they coincide). The per-primitive values
+# themselves are pinned in-process by test_integration.REFERENCE_CASES —
+# repeating them here only buys extra subprocess launches.
 CLI_CASES = [
     (
         ["qft", "-p", "n=32", "-p", "variant=textbook"],
         "qft",
         dict(n=32, variant="textbook"),
     ),
-    (
-        ["qft", "-p", "n=32", "-p", "variant=approx"],
-        "qft",
-        dict(n=32, variant="approx"),
-    ),
     (["arithmetic", "-p", "n=16", "-p", "op=add"], "arithmetic", dict(n=16, op="add")),
-    (["arithmetic", "-p", "n=16", "-p", "op=mul"], "arithmetic", dict(n=16, op="mul")),
-    (["qpe", "-p", "m=8", "-p", "phi=0.25"], "qpe", dict(m=8, phi=0.25)),
-    (
-        ["qrom", "-p", "data_size=256", "-p", "variant=basic"],
-        "qrom",
-        dict(data_size=256, variant="basic"),
-    ),
 ]
 
 
