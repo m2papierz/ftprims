@@ -42,19 +42,14 @@ def test_ge19_toffoli_formula_matches_table1(logical):
 
 
 def test_modexp_call_graph_count_pinned(logical):
-    """Regression literal: a dependency bump that moves it must surface.
-
-    ``n_ccz`` = And + Toffoli + CSwap. The and_bloq-only count is pinned
-    separately below because CMODMULK_AUDIT.md and main_003.md quote it.
-    """
+    """Regression literal: a dependency bump that moves it must surface."""
     assert logical.modexp_ccz_count == GE19["modexp_qualtran_toffoli"]
 
 
 def test_modexp_and_only_count_pinned():
-    """The and_bloq-only count, 0.0049% below the n_ccz total (the ne·n CSwaps).
+    """The and_bloq-only count, pinned so the two currencies cannot drift.
 
-    Pinned so the two currencies cannot silently drift apart — the audit and
-    the blog both quote the AND-only figure.
+    Aggregation rule and both literals: ASSUMPTIONS.md §3/§4.
     """
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
@@ -84,10 +79,6 @@ def test_modexp_coefficient_converges(logical):
 
 def test_modexp_matches_fitted_half_reference(logical):
     """Regression pin on the fitted 10·ne·n² coefficient.
-
-    In n_ccz currency the exact closed form is 10·ne·n² + 5·ne·n (the +5 is
-    +4 from the And-per-controlled-modular-addition terms and +1 from the
-    CSwap), so the coefficient is 10 + 5/n = 10.002441 at n=2048.
 
     Not evidence — the coefficient is fitted. Attribution rests on
     test_modexp_coefficient_converges.

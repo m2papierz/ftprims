@@ -53,7 +53,7 @@ _CALL_GRAPH_MAX_DEPTH = 4
 
 # Bloqs whose QECGatesCost returns zero but have known non-trivial cost.
 _COST_OVERRIDES: dict[str, tuple[int, int, int, int]] = {
-    "Toffoli": (0, 1, 0, 0),  # (raw_t, and_count, rotations, cliffords)
+    "Toffoli": (0, 1, 0, 0),  # (raw_t, ccz_count, rotations, cliffords)
 }
 
 
@@ -66,8 +66,17 @@ def _default_generalizer(bloq: Bloq) -> Bloq | None:
     return bloq
 
 
+def _magic_state_counts(gates) -> tuple[int, int]:
+    """Return ``(raw_t, ccz_count)`` from a Qualtran ``GateCounts``.
+
+    Magic-state and rotation conventions: ASSUMPTIONS.md §3.
+    """
+    counts = gates.total_t_and_ccz_count(ts_per_rotation=0)
+    return int(counts["n_t"]), int(counts["n_ccz"])
+
+
 def _leaf_gate_costs(leaf: Bloq) -> tuple[int, int, int, int]:
-    """Return ``(raw_t, and_count, rotations, cliffords)`` for a leaf.
+    """Return ``(raw_t, ccz_count, rotations, cliffords)`` for a leaf.
 
     Checks hardcoded overrides first, then falls back to
     ``QECGatesCost``. Returns all zeros on failure.
@@ -77,12 +86,8 @@ def _leaf_gate_costs(leaf: Bloq) -> tuple[int, int, int, int]:
         return override
     try:
         gates = get_cost_value(leaf, QECGatesCost())
-        return (
-            int(gates.t),
-            int(gates.and_bloq),
-            int(gates.rotation),
-            int(gates.clifford),
-        )
+        raw_t, ccz = _magic_state_counts(gates)
+        return (raw_t, ccz, int(gates.rotation), int(gates.clifford))
     except Exception:
         return 0, 0, 0, 0
 
@@ -145,12 +150,8 @@ def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
     # Strategy 1: QECGatesCost on the top-level bloq.
     try:
         gates = get_cost_value(bloq, QECGatesCost())
-        vals = (
-            int(gates.t),
-            int(gates.and_bloq),
-            int(gates.rotation),
-            int(gates.clifford),
-        )
+        raw_t, ccz = _magic_state_counts(gates)
+        vals = (raw_t, ccz, int(gates.rotation), int(gates.clifford))
         if _is_nontrivial(*vals):
             if _has_nonclifford(*vals):
                 return (*vals, int(qubits))
@@ -162,12 +163,8 @@ def _try_extract_gates(bloq: Bloq) -> tuple[int, int, int, int, int]:
     try:
         decomposed = bloq.decompose_bloq()
         gates = get_cost_value(decomposed, QECGatesCost())
-        vals = (
-            int(gates.t),
-            int(gates.and_bloq),
-            int(gates.rotation),
-            int(gates.clifford),
-        )
+        raw_t, ccz = _magic_state_counts(gates)
+        vals = (raw_t, ccz, int(gates.rotation), int(gates.clifford))
         if _is_nontrivial(*vals):
             q = get_cost_value(decomposed, QubitCount()) if int(qubits) == 0 else qubits
             if _has_nonclifford(*vals):

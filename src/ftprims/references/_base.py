@@ -112,7 +112,7 @@ class GE19LogicalReproduction:
     n: int
     logical_qubits_formula: float
     toffoli_formula: float
-    modexp_and_count: int
+    modexp_ccz_count: int
     half_reference_fitted: float
     divergence_ratio: float
     coefficient_series: tuple[tuple[int, float], ...] = ()
@@ -120,9 +120,9 @@ class GE19LogicalReproduction:
 
     @property
     def measured_coefficient(self) -> float:
-        """Measured ``and_count / (ne·n²)`` at ``ne = 2n``."""
+        """Measured ``n_ccz / (ne·n²)`` at ``ne = 2n``."""
         ne = 2 * self.n
-        return self.modexp_and_count / (ne * self.n**2)
+        return self.modexp_ccz_count / (ne * self.n**2)
 
     @property
     def rows(self) -> tuple[ReproductionRow, ...]:
@@ -132,12 +132,12 @@ class GE19LogicalReproduction:
             ),
             ReproductionRow.make("Toffoli", "GE19 formula", self.toffoli_formula),
             ReproductionRow.make(
-                "Toffoli", "Qualtran ModExp", float(self.modexp_and_count)
+                "Toffoli", "Qualtran ModExp", float(self.modexp_ccz_count)
             ),
             ReproductionRow.make("ModExp / formula", "ratio", self.divergence_ratio),
             ReproductionRow.make(
                 "measured coefficient",
-                "and_count/(ne·n²)",
+                "n_ccz/(ne·n²)",
                 self.measured_coefficient,
                 self.ge19_reference_coefficient,
             ),

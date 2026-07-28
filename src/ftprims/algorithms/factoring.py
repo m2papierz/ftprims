@@ -5,7 +5,7 @@ logical costs by counting symbolically over the call graph — never by tracing
 qubits. ``get_cost_value(ModExp, QubitCount())`` /
 ``AlgorithmSummary.from_bloq`` / ``decompose_bloq`` walk the wires (O(gates)) and
 hang at n >= 128, so the logical-qubit count is supplied analytically (e.g. GE19
-``3n``) while only the And/Toffoli and raw-T totals come from ``QECGatesCost``.
+``3n``) while only the magic-state and raw-T totals come from ``QECGatesCost``.
 """
 
 from __future__ import annotations
@@ -25,7 +25,7 @@ def make_shor_modexp(n_bits: int, *, base: int = 7):
     thousand-bit integers, producing an ``x_bitsize`` one bit too small to hold
     residues mod N and raising a "Too-large classical value" error at n=2048.
 
-    The ``QECGatesCost`` And/Toffoli count depends only on the bitsizes, not the
+    The ``QECGatesCost`` magic-state count depends only on the bitsizes, not the
     modulus value (verified: identical count across distinct 2048-bit moduli), so
     a fixed placeholder odd modulus of the right bit length is used.
 
@@ -55,8 +55,8 @@ def modexp_logical_costs(
     """Logical costs for a ``ModExp`` bloq WITHOUT tracing qubits.
 
     Counts symbolically over the call graph via ``QECGatesCost`` (~0.01 s at
-    n=2048) to get the And/Toffoli and raw-T totals, then attaches the
-    analytic *logical_qubits* count. This deliberately avoids
+    n=2048) to get the magic-state and raw-T totals (ASSUMPTIONS.md §3), then
+    attaches the analytic *logical_qubits* count. This deliberately avoids
     ``QubitCount`` / ``AlgorithmSummary.from_bloq`` / ``decompose_bloq``,
     which walk the wires (O(gates)) and hang on ModExp at n≥128 — the exact
     reason ``resource.extract_logical_costs`` must not be used here.
@@ -69,8 +69,9 @@ def modexp_logical_costs(
         Logical-qubit count from the paper's analytic formula (GE19 ``3n``).
     """
     gates = get_cost_value(modexp_bloq, QECGatesCost())
+    counts = gates.total_t_and_ccz_count(ts_per_rotation=0)
     return LogicalCosts.from_toffoli_count(
-        int(gates.and_bloq),
+        int(counts["n_ccz"]),
         logical_qubits=logical_qubits,
-        raw_t=int(gates.t),
+        raw_t=int(counts["n_t"]),
     )

@@ -25,6 +25,7 @@ from ftprims.resource import (
     _default_generalizer,
     _extract_via_call_graph,
     _leaf_gate_costs,
+    _magic_state_counts,
     rotation_synthesis_t_cost,
 )
 
@@ -108,7 +109,7 @@ def _is_parameterized_rotation(bloq: Bloq) -> bool:
 
 
 def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
-    """Return ``(raw_t, and_count, rotations, cliffords)`` for a structural child.
+    """Return ``(raw_t, ccz_count, rotations, cliffords)`` for a structural child.
 
     Tries ``QECGatesCost`` first — it handles internal decomposition
     so that a composite bloq like ``Add`` returns its full gate cost
@@ -123,12 +124,8 @@ def _child_gate_costs(child: Bloq) -> tuple[int, int, int, int]:
     # Strategy 1: QECGatesCost on the child (handles composites).
     try:
         gates = get_cost_value(child, QECGatesCost())
-        vals = (
-            int(gates.t),
-            int(gates.and_bloq),
-            int(gates.rotation),
-            int(gates.clifford),
-        )
+        raw_t, ccz = _magic_state_counts(gates)
+        vals = (raw_t, ccz, int(gates.rotation), int(gates.clifford))
         if sum(vals) > 0:
             if vals[0] + vals[1] + vals[2] > 0:
                 return vals
@@ -203,8 +200,8 @@ def extract_structural_breakdown(
         category = classify_component(child)
 
         # Extract full gate costs for this child.
-        raw_t, and_count, child_rotations, child_cliffords = _child_gate_costs(child)
-        child_direct_t = raw_t + 4 * and_count
+        raw_t, ccz_count, child_rotations, child_cliffords = _child_gate_costs(child)
+        child_direct_t = raw_t + 4 * ccz_count
 
         bucket = acc[category]
         bucket["invocations"] += count

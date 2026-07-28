@@ -111,7 +111,9 @@ GE19 = dict(
     reaction_us=10.0,  # abstract
     logical_qubits=6189,  # abstract formula at n=2048
     toffoli_count=2.7e9,  # Table 1
-    modexp_qualtran_toffoli=171_832_246_272,  # measured, qualtran 0.7.0
+    # Measured, qualtran 0.7.0 (ASSUMPTIONS.md §3).
+    modexp_qualtran_toffoli=171_840_634_880,
+    modexp_qualtran_and_only=171_832_246_272,
     table1_toffoli_billions=dict(n1024=0.4, n2048=2.7, n3072=9.9),
     table1_minvol_megaqubitdays=dict(n1024=0.5, n2048=5.9, n3072=21),
     physical_rows=dict(

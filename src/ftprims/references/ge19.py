@@ -35,7 +35,7 @@ def ge19_formula_logical_costs() -> LogicalCosts:
 def modexp_coefficient_series(
     sizes: tuple[int, ...] = MODEXP_COEFFICIENT_SIZES,
 ) -> tuple[tuple[int, float], ...]:
-    """Measured ``and_count / (ne·n²)`` for ``ModExp`` at each ``n`` in *sizes*."""
+    """Measured ``n_ccz / (ne·n²)`` for ``ModExp`` at each ``n`` in *sizes*."""
     return tuple(
         (
             n,
@@ -62,7 +62,7 @@ def reproduce_ge19_logical() -> GE19LogicalReproduction:
         n=n,
         logical_qubits_formula=ge19_logical_qubits(n),
         toffoli_formula=ge19_toffoli_count(n),
-        modexp_and_count=modexp_logical.and_count,
+        modexp_ccz_count=modexp_logical.and_count,
         half_reference_fitted=modexp_toffoli_reference(n, ne) / 2,
         divergence_ratio=modexp_logical.and_count / GE19["toffoli_count"],
         coefficient_series=modexp_coefficient_series(),

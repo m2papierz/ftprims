@@ -22,7 +22,11 @@ class BreakdownItem:
 
 @attrs.define(frozen=True)
 class LogicalCosts:
-    """Logical-level resource counts."""
+    """Logical-level resource counts.
+
+    ``and_count`` holds the aggregate magic-state count (ASSUMPTIONS.md §3);
+    the field name predates that aggregation.
+    """
 
     logical_qubits_estimate: int
     t_count_direct: int
@@ -42,7 +46,7 @@ class LogicalCosts:
         logical_qubits: int,
         raw_t: int = 0,
     ) -> "LogicalCosts":
-        """Build a ``LogicalCosts`` from a Toffoli/And count and a qubit count.
+        """Build a ``LogicalCosts`` from a magic-state count and a qubit count.
 
         For large factoring workloads the logical-qubit count comes from the
         paper's analytic formula (e.g. GE19 ``3n``), NOT from a traced
@@ -53,8 +57,9 @@ class LogicalCosts:
         Parameters
         ----------
         toffoli_count:
-            Number of Toffoli/And gates. Counted as ``and_count`` so the shared
-            ``raw_t + 4*and`` T-equivalent convention applies (1 Toffoli = 4 T).
+            Aggregate magic-state count (ASSUMPTIONS.md §3), stored in
+            ``and_count`` so the shared ``raw_t + 4*and`` T-equivalent
+            convention applies.
         logical_qubits:
             Logical-qubit count, from the paper's analytic formula.
         raw_t:
