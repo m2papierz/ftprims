@@ -17,18 +17,6 @@ PALETTE = {
     "pink": "#DB2777",
 }
 
-# Ordered list for cycling through operations / variants.
-CYCLE = [
-    PALETTE["blue"],
-    PALETTE["red"],
-    PALETTE["green"],
-    PALETTE["orange"],
-    PALETTE["purple"],
-    PALETTE["teal"],
-    PALETTE["pink"],
-    PALETTE["gray"],
-]
-
 
 _DPI = 200
 _RC_OVERRIDES = {
@@ -76,9 +64,7 @@ def apply_theme() -> None:
 
 
 # Canonical figure sizes.
-FIG_SINGLE = (7.5, 5)
 FIG_DUAL = (13, 5)
-FIG_TALL = (8, 6)
 
 
 def light_grid(ax, which: str = "both", axis: str = "both") -> None:
@@ -86,17 +72,14 @@ def light_grid(ax, which: str = "both", axis: str = "both") -> None:
     ax.grid(True, which=which, axis=axis, color="#E5E7EB", alpha=0.7, linewidth=0.6)
 
 
-def savefig(fig, path: Path, **kwargs) -> None:
-    """Save with tight bbox and print confirmation."""
-    fig.savefig(path, bbox_inches="tight", **kwargs)
+def savefig(fig, *paths: Path, **kwargs) -> None:
+    """Save the figure to every *path* with tight bbox, then close it once.
+
+    Multiple paths exist for charts that are both a pipeline artifact and a
+    committed copy (see ``landscape.py``); writing them in one call keeps the
+    copies from drifting.
+    """
+    for path in paths:
+        fig.savefig(path, bbox_inches="tight", **kwargs)
+        print(f"Saved {path}")
     plt.close(fig)
-    print(f"Saved {path}")
-
-
-def format_k(val: float, _pos=None) -> str:
-    """Tick formatter: 1000 → '1k', 45000 → '45k'."""
-    if val >= 1_000_000:
-        return f"{val / 1_000_000:.0f}M"
-    if val >= 1_000:
-        return f"{val / 1_000:.0f}k"
-    return f"{val:.0f}"
