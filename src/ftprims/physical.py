@@ -52,6 +52,8 @@ class PhysicalModelSpec:
     error_budget: float = 1e-3
     physical_error: float | None = None
     cycle_time_us: float | None = None
+    factory_l1_d: int | None = None
+    factory_l2_d: int | None = None
 
 
 _PROFILES = ("gidney_fowler", "beverland")
@@ -110,17 +112,41 @@ def make_data_block(
     raise ValueError(f"Unknown data_block {kind!r}; choose from {_DATA_BLOCKS}")
 
 
-def make_factory(kind: str, data_d: int) -> CCZ2TFactory | FifteenToOne:
-    """Construct a magic-state factory of the requested kind."""
+def make_factory(
+    kind: str,
+    data_d: int,
+    *,
+    l1_d: int | None = None,
+    l2_d: int | None = None,
+) -> CCZ2TFactory | FifteenToOne:
+    """Construct a magic-state factory of the requested kind.
+
+    ``data_d`` applies to ``fifteen_to_one`` only: the CCZ2T factory's
+    distances are independent of the data-block distance. With ``l1_d`` /
+    ``l2_d`` unset this returns Qualtran's default (15, 31); use
+    :func:`estimate_physical` to search them.
+    """
     if kind == "ccz2t":
+        if l1_d is not None and l2_d is not None:
+            return CCZ2TFactory(distillation_l1_d=l1_d, distillation_l2_d=l2_d)
         return CCZ2TFactory()
     if kind == "fifteen_to_one":
         return FifteenToOne(d_X=data_d, d_Z=data_d, d_m=data_d)
     raise ValueError(f"Unknown factory {kind!r}; choose from {_FACTORIES}")
 
 
-def make_model(spec: PhysicalModelSpec, data_d: int) -> PhysicalCostModel:
-    """Assemble a ``PhysicalCostModel`` from a spec at a given distance."""
+def make_model(
+    spec: PhysicalModelSpec,
+    data_d: int,
+    *,
+    l1_d: int | None = None,
+    l2_d: int | None = None,
+) -> PhysicalCostModel:
+    """Assemble a ``PhysicalCostModel`` from a spec at a given distance.
+
+    Explicit *l1_d* / *l2_d* override ``spec.factory_l1_d`` / ``spec.factory_l2_d``
+    (used by the distillation-distance search in :func:`estimate_physical`).
+    """
     return PhysicalCostModel(
         qec_scheme=make_qec_scheme(spec.profile),
         physical_params=make_physical_params(
@@ -129,11 +155,13 @@ def make_model(spec: PhysicalModelSpec, data_d: int) -> PhysicalCostModel:
             cycle_time_us=spec.cycle_time_us,
         ),
         data_block=make_data_block(spec.data_block, data_d),
-        factory=make_factory(spec.factory, data_d),
+        factory=make_factory(
+            spec.factory,
+            data_d,
+            l1_d=spec.factory_l1_d if l1_d is None else l1_d,
+            l2_d=spec.factory_l2_d if l2_d is None else l2_d,
+        ),
     )
-
-
-# ── Estimation ────────────────────────────────────────────────────────
 
 
 def _algo_summary_from_logical(logical: LogicalCosts) -> AlgorithmSummary:
@@ -194,14 +222,17 @@ def estimate_physical(
     return best
 
 
-def _evaluate(
+def _evaluate_at(
     spec: PhysicalModelSpec,
     summary: AlgorithmSummary,
     data_d: int,
+    l1_d: int | None,
+    l2_d: int | None,
 ) -> PhysicalCosts:
-    """Run the physical model at a single code distance."""
-    model = make_model(spec, data_d)
+    """Run the physical model at one (data_d, l1_d, l2_d) point."""
+    model = make_model(spec, data_d, l1_d=l1_d, l2_d=l2_d)
     failure_prob = float(model.error(summary))
+    factory = model.factory
     return PhysicalCosts(
         physical_qubits=int(model.n_phys_qubits(summary)),
         wall_time_us=float(model.duration_hr(summary)) * 3_600_000_000,
@@ -212,10 +243,46 @@ def _evaluate(
         profile=spec.profile,
         data_block=spec.data_block,
         factory=spec.factory,
+        factory_l1_d=getattr(factory, "distillation_l1_d", None),
+        factory_l2_d=getattr(factory, "distillation_l2_d", None),
+        n_factories=1,
     )
 
 
-# ── Parallel-factory grid search (GE19 parallel headline) ──────────────
+def _evaluate(
+    spec: PhysicalModelSpec,
+    summary: AlgorithmSummary,
+    data_d: int,
+) -> PhysicalCosts:
+    """Run the physical model at *data_d*, searching CCZ2T distillation distances.
+
+    Returns the smallest-footprint factory meeting the error budget, falling
+    back to the lowest achieved failure probability when none does.
+    """
+    pinned = spec.factory_l1_d is not None and spec.factory_l2_d is not None
+    if spec.factory != "ccz2t" or pinned:
+        return _evaluate_at(spec, summary, data_d, spec.factory_l1_d, spec.factory_l2_d)
+
+    best: PhysicalCosts | None = None
+    best_unsatisfied: PhysicalCosts | None = None
+    for factory in iter_ccz2t_factories():
+        candidate = _evaluate_at(
+            spec,
+            summary,
+            data_d,
+            factory.distillation_l1_d,
+            factory.distillation_l2_d,
+        )
+        if candidate.budget_satisfied:
+            if best is None or candidate.physical_qubits < best.physical_qubits:
+                best = candidate
+        elif best_unsatisfied is None or (
+            candidate.failure_prob < best_unsatisfied.failure_prob
+        ):
+            best_unsatisfied = candidate
+
+    assert best is not None or best_unsatisfied is not None
+    return best if best is not None else best_unsatisfied  # type: ignore[return-value]
 
 
 def estimate_physical_grid_search(
@@ -270,6 +337,7 @@ def estimate_physical_grid_search(
         factory_iter=list(iter_ccz2t_factories(n_factories=n_factories)),
     )
     failure_prob = float(summary.failure_prob)
+    base = getattr(factory, "base_factory", factory)
     return PhysicalCosts(
         physical_qubits=int(summary.footprint),
         wall_time_us=float(summary.duration_hr) * 3_600_000_000,
@@ -280,4 +348,7 @@ def estimate_physical_grid_search(
         profile="gidney_fowler",
         data_block="simple",
         factory="ccz2t",
+        factory_l1_d=getattr(base, "distillation_l1_d", None),
+        factory_l2_d=getattr(base, "distillation_l2_d", None),
+        n_factories=n_factories,
     )

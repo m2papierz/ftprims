@@ -85,6 +85,9 @@ class PhysicalCosts:
     profile: str = "gidney_fowler"
     data_block: str = "simple"
     factory: str = "ccz2t"
+    factory_l1_d: int | None = None
+    factory_l2_d: int | None = None
+    n_factories: int = 1
 
 
 @attrs.define(frozen=True)
