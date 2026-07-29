@@ -1,8 +1,7 @@
 """Sweep rotation-synthesis precision epsilon => QFT T-equivalent counts.
 
-The approximate QFT has zero arbitrary-angle rotations, so the textbook/
-approximate ratio measures synthesis cost alone -- and that depends on epsilon.
-See ASSUMPTIONS.md §2.
+The approximate QFT has zero arbitrary-angle rotations, so the textbook/approx
+ratio measures synthesis cost alone. Sensitivity: ASSUMPTIONS.md §2.
 
 Outputs:
   results/sweeps/sweep_rotation_epsilon.csv
@@ -22,7 +21,7 @@ from ftprims.resource import rotation_synthesis_t_cost
 
 EPSILONS = [1e-3, 1e-6, 1e-8, 1e-10, 1e-12, 1e-15]
 BITSIZES = [8, 16, 32, 64, 128]
-HEADLINE_N = 32
+CHART_N = 32
 
 
 def qualtran_default_row(n: int) -> dict:
@@ -101,9 +100,9 @@ def plot(rows: list[dict], path: Path) -> None:
 
     numeric = [r for r in rows if r["epsilon"] != "qualtran_default"]
 
-    # Left: ratio vs epsilon at the headline bitsize.
+    # Left: ratio vs epsilon at the charted bitsize.
     subset = sorted(
-        (r for r in numeric if r["n"] == HEADLINE_N), key=lambda r: r["epsilon"]
+        (r for r in numeric if r["n"] == CHART_N), key=lambda r: r["epsilon"]
     )
     eps = [r["epsilon"] for r in subset]
     ratios = [r["ratio"] for r in subset]
@@ -120,7 +119,7 @@ def plot(rows: list[dict], path: Path) -> None:
             fontweight="bold",
         )
     qd = next(
-        r for r in rows if r["n"] == HEADLINE_N and r["epsilon"] == "qualtran_default"
+        r for r in rows if r["n"] == CHART_N and r["epsilon"] == "qualtran_default"
     )
     ax1.axhline(
         y=qd["ratio"],
@@ -131,7 +130,7 @@ def plot(rows: list[dict], path: Path) -> None:
     )
     ax1.set_xlabel("Rotation synthesis ε")
     ax1.set_ylabel("Textbook / Approximate T-equivalent")
-    ax1.set_title(f"QFT(n={HEADLINE_N}): the ratio IS the ε assumption")
+    ax1.set_title(f"QFT(n={CHART_N}): textbook/approx ratio vs ε")
     ax1.legend(fontsize=9)
     light_grid(ax1, which="both")
 
@@ -149,7 +148,7 @@ def plot(rows: list[dict], path: Path) -> None:
         )
     ax2.set_xlabel("Bitsize (n)")
     ax2.set_ylabel("Textbook QFT T-equivalent")
-    ax2.set_title("Synthesis precision shifts the whole curve")
+    ax2.set_title("Textbook QFT T-equivalent vs n, per ε")
     ax2.legend(fontsize=8)
     light_grid(ax2, which="both")
 

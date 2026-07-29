@@ -33,7 +33,7 @@ def test_beverland_t_states(inst):
 
 @pytest.mark.parametrize("inst", _INSTANCES, ids=_IDS)
 def test_beverland_code_distance(inst):
-    """Code distance reproduces the paper EXACTLY; no tolerance granted."""
+    """Code distance reproduces the paper exactly; no tolerance."""
     assert inst.code_distance == inst.expect_code_distance, (
         f"{inst.name}: {inst.code_distance} vs {inst.expect_code_distance}"
     )

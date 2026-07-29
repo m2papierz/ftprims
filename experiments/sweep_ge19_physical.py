@@ -1,9 +1,7 @@
 """Sweep the GE19 physical reproduction over error_budget x n_factories.
 
-Both parameters have published values (error_budget = GE19's retry risk 0.31,
-n_factories = 28 for the parallel row); this sweep shows how far the
-reproduction moves when either is varied. Deviations use matched conventions --
-see ASSUMPTIONS.md §3.
+Both parameters are GE19-published (retry risk 0.31, 28 factories for the
+parallel row). Deviations use matched conventions: ASSUMPTIONS.md §3.
 
 Outputs:
   results/sweeps/sweep_ge19_physical.csv
@@ -25,8 +23,7 @@ from ftprims.references.values import GE19
 ERROR_BUDGETS = [0.1, 0.2, 0.31, 0.4, 0.5]
 FACTORY_COUNTS = [1, 2, 4, 8, 14, 16, 20, 28, 32]
 
-HEADLINE_BUDGET = 0.31  # GE19 Table 3 retry risk
-HEADLINE_FACTORIES = 28  # GE19 Table 2 parallel row
+GE19_PARALLEL_FACTORIES = 28  # GE19 Table 2 parallel row
 
 
 # GE19 publishes a comparable row only at these factory counts (Table 2).
@@ -128,7 +125,9 @@ def plot(rows: list[dict], path: Path) -> None:
         linestyle="--",
         label=f"GE19 Table 2 ({target_q} M)",
     )
-    ax1.axvline(x=HEADLINE_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7)
+    ax1.axvline(
+        x=GE19_PARALLEL_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7
+    )
     ax1.set_xlabel("Parallel magic-state factories")
     ax1.set_ylabel("Physical qubits (millions)")
     ax1.set_title("GE19 parallel row: qubits")
@@ -153,7 +152,9 @@ def plot(rows: list[dict], path: Path) -> None:
         linestyle="--",
         label=f"GE19 Table 3 ({target_t} hr/run)",
     )
-    ax2.axvline(x=HEADLINE_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7)
+    ax2.axvline(
+        x=GE19_PARALLEL_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7
+    )
     ax2.set_xlabel("Parallel magic-state factories")
     ax2.set_ylabel("Runtime (hours, per run)")
     ax2.set_title("GE19 parallel row: runtime")

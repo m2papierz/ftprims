@@ -1,7 +1,7 @@
 """2019 -> 2025 decomposition (arXiv:2505.15917).
 
-Both Toffoli conventions are exercised; running only one would hide the
-mismatch rather than bound it. See ASSUMPTIONS.md §3.
+Both Toffoli conventions are exercised, which bounds the convention mismatch
+instead of hiding it. See ASSUMPTIONS.md §3.
 """
 
 from __future__ import annotations
@@ -50,10 +50,10 @@ def test_g2025_through_model_reproduces(decompositions, convention, n_factories)
 
 
 @pytest.mark.parametrize("convention", CONVENTIONS)
-def test_g2025_below_published_headline(decompositions, convention):
-    """The model cannot reach G2025's published < 1M — that gap is the finding."""
+def test_g2025_stays_above_published_qubit_target(decompositions, convention):
+    """The model floors out in the millions, above G2025's published < 1e6."""
     g2025 = decompositions[convention].by_factories(1).g2025
-    assert g2025.physical_qubits > 2e6  # far above the paper's < 1e6 headline
+    assert g2025.physical_qubits > 2e6
 
 
 @pytest.mark.parametrize("convention", CONVENTIONS)

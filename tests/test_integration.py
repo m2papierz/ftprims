@@ -120,8 +120,8 @@ def test_logical_costs_match_reference(case):
 def test_logical_breakdown_consistency(case):
     """Logical t_count_ftqc must agree with the sum of breakdown est_t_ftqc.
 
-    Two independently derived counts of the same quantity — the check that
-    caught the ApproximateQFT bug (logical=0 vs breakdown=2632).
+    Two independent extraction paths over the same bloq; they diverge when one
+    misses non-Clifford cost hidden below the top level.
     """
     bench = registry[case.name]
     bloq = bench.build_bloq(**case.params)
@@ -166,7 +166,8 @@ def test_breakdown_dominant_component(case):
 def test_physical_estimation_sane(name, params):
     """Physical estimates must be positive and meet the error budget.
 
-    Would have caught the approx QFT bug: wall_time=0, code_distance=3.
+    A zero wall_time with the floor code distance means the logical costs
+    reaching the physical layer were empty.
     """
     bench = registry[name]
     costs = bench.logical_costs(bench.build_bloq(**params))
@@ -213,10 +214,9 @@ def test_ccz2t_distillation_distances_are_searched():
     """estimate_physical must search CCZ2T distillation distances, not accept
     Qualtran's construction default (15, 31).
 
-    Pinning the default costs 184,004 physical qubits on QFT n=32 textbook
-    where the search finds (13, 17) at 119,492 — a 35% difference that would
-    otherwise be silently carried into every physical estimate. The chosen
-    distances are recorded on the result so the configuration is reproducible.
+    On QFT n=32 textbook the default costs 184,004 physical qubits against the
+    search's (13, 17) at 119,492, a 35% difference. The selected distances are
+    recorded on the result.
     """
     bench = registry["qft"]
     costs = bench.logical_costs(bench.build_bloq(n=32, variant="textbook"))
@@ -292,8 +292,8 @@ def test_t_count_monotonic(name, param_key, sizes, fixed):
 def test_approx_qft_cheaper_than_textbook():
     """Approximate QFT must cost strictly less than textbook for n >= 8.
 
-    The headline trade-off: the approximate variant truncates small-angle
-    rotations, so the whole ratio is rotation-synthesis cost.
+    The approximate variant truncates small-angle rotations, so the ratio is
+    rotation-synthesis cost alone.
     """
     bench = registry["qft"]
     for n in [8, 16, 32, 64]:
