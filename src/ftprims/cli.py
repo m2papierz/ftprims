@@ -1,4 +1,5 @@
-"""ftprims CLI: run benchmarks, verify, export QREF, compile with Bartiq."""
+"""ftprims CLI: run benchmarks, verify, export QREF, compile with Bartiq,
+and print the published-estimate reproductions."""
 
 from __future__ import annotations
 
@@ -78,8 +79,6 @@ def main() -> None:
     default=None,
     help="Rotation synthesis epsilon (default from config: 1e-10)",
 )
-@click.option("--explain", is_flag=True, help="Print interpretation after JSON output")
-@click.option("--explain-json", is_flag=True, help="Embed explanation in JSON output")
 @click.option(
     "--config", "config_path", type=click.Path(), default=None, help="Config YAML"
 )
@@ -97,8 +96,6 @@ def run(
     cycle_time_us: float | None,
     breakdown: bool,
     rotation_eps: float | None,
-    explain: bool,
-    explain_json: bool,
     config_path: str | None,
 ) -> None:
     """Run a single benchmark and report resource costs."""
@@ -107,7 +104,7 @@ def run(
     params = _parse_params(param)
     click.echo(f"Building {primitive} with {params}")
 
-    # Resolve configuration: CLI overrides config, config overrides hardcoded defaults.
+    # CLI overrides config, config overrides the dataclass defaults.
     eps = (
         rotation_eps
         if rotation_eps is not None
@@ -137,14 +134,13 @@ def run(
             "t_count_direct": costs.t_count_direct,
             "t_count_ftqc": costs.t_count_ftqc,
             "raw_t": costs.raw_t,
-            "and_count": costs.and_count,
+            "magic_state_count": costs.magic_state_count,
             "clifford_count": costs.clifford_count,
             "rotation_count": costs.rotation_count,
             "rotation_synthesis_epsilon": costs.rotation_synthesis_epsilon,
         },
     }
 
-    breakdown_items: tuple = ()
     if breakdown:
         import attrs
 
@@ -154,7 +150,6 @@ def run(
             bloq,
             rotation_eps=eps,
         )
-        breakdown_items = items
         result["breakdown"] = [attrs.asdict(item) for item in items]
         result["breakdown_summary"] = summarize_breakdown(items)
 
@@ -162,7 +157,6 @@ def run(
             costs.t_count_ftqc, items, primitive, params
         )
 
-    phys_result = None
     if physical:
         from ftprims.physical import PhysicalModelSpec
         from ftprims.physical import estimate_physical as phys_estimate
@@ -189,27 +183,7 @@ def run(
             "budget_satisfied": phys_result.budget_satisfied,
         }
 
-    explanation = None
-    if explain or explain_json:
-        from ftprims.explain import explain_run
-
-        explanation = explain_run(
-            primitive,
-            params,
-            costs,
-            physical=phys_result,
-            breakdown=breakdown_items,
-        )
-        if explain_json:
-            result["explain"] = explanation
-
     click.echo(json.dumps(result, indent=2))
-
-    if explanation is not None and explain and not explain_json:
-        click.echo()
-        click.echo(f"  {explanation['headline']}")
-        for obs in explanation["observations"]:
-            click.echo(f"  • {obs}")
 
     if out:
         Path(out).parent.mkdir(parents=True, exist_ok=True)
@@ -223,15 +197,14 @@ def _check_logical_breakdown_consistency(
     primitive: str,
     params: dict,
 ) -> None:
-    """Warn when breakdown total diverges from logical t_count_ftqc.
+    """Warn when the breakdown total diverges from ``t_count_ftqc`` by >10%.
 
-    Both values are computed from the same bloq but via different
-    extraction strategies. A large discrepancy indicates a cost
-    extraction bug.
+    The two come from the same bloq by different extraction paths, so a large
+    gap means one of them is wrong.
     """
     breakdown_ftqc = sum(item.est_t_ftqc for item in items)
 
-    # Both zero is consistent (e.g. Clifford-only circuits).
+    # Both zero is consistent, e.g. Clifford-only circuits.
     if logical_ftqc == 0 and breakdown_ftqc == 0:
         return
 
@@ -242,8 +215,8 @@ def _check_logical_breakdown_consistency(
         warnings.warn(
             f"[{primitive} {params}] logical t_count_ftqc={logical_ftqc:,} vs "
             f"breakdown total={breakdown_ftqc:,} (delta={relative:.1%}). "
-            f"The two extraction strategies disagree - check resource.py "
-            f"and breakdown.py cost extraction paths.",
+            f"The two extraction paths disagree; check resource.py and "
+            f"breakdown.py.",
             stacklevel=2,
         )
 
@@ -263,8 +236,6 @@ def verify(primitive: str, param: tuple[str, ...]) -> None:
         sys.exit(1)
 
 
-# Port-size heuristic for QREF export
-
 _PORT_SIZE_KEYS: dict[str, list[str]] = {
     "qft": ["n"],
     "qpe": ["m"],
@@ -274,7 +245,7 @@ _PORT_SIZE_KEYS: dict[str, list[str]] = {
 
 
 def _infer_port_size(primitive: str, params: dict) -> int | None:
-    """Best-effort port size from params; returns None when unknown."""
+    """QREF port size from *params*, or ``None`` when no key applies."""
     for key in _PORT_SIZE_KEYS.get(primitive, []):
         val = params.get(key)
         if val is not None:
@@ -312,15 +283,11 @@ def export_qref(
     check: bool,
     config_path: str | None,
 ) -> None:
-    """Export benchmark as a QREF v1 program.
+    """Export a benchmark as a QREF v1 program.
 
-    In numeric mode (default) concrete resource values are embedded.
-    In symbolic mode (--symbolic) approximate analytic expressions are
-    written so that ``ftprims bartiq`` can compile and evaluate them.
-
-    Use ``--check`` with ``--symbolic`` to compare the analytic
-    approximation against the real Qualtran benchmark at the given
-    parameters.
+    Numeric mode embeds concrete resource values. --symbolic writes analytic
+    expressions for ``ftprims bartiq`` to compile; --check compares them
+    against the Qualtran benchmark at the given parameters.
     """
     from ftprims.export import build_qref_program, save_qref
 
@@ -328,8 +295,7 @@ def export_qref(
     bench = registry[primitive]
     params = _parse_params(param)
 
-    # Always build the bloq and compute numeric costs - needed for
-    # numeric mode directly, and for --check in symbolic mode.
+    # Numeric mode needs these directly; symbolic mode needs them for --check.
     need_numeric = (not symbolic) or check
     numeric_costs = None
     if need_numeric:
@@ -339,7 +305,7 @@ def export_qref(
     if symbolic:
         from ftprims.algorithms._base import LogicalCosts
 
-        # Symbolic mode uses formula-based costs; pass dummy for build.
+        # Symbolic mode reads its costs from the formula table, not from here.
         costs = LogicalCosts(
             logical_qubits_estimate=0,
             t_count_direct=0,
@@ -373,7 +339,7 @@ def export_qref(
     if check and symbolic and numeric_costs is not None:
         from ftprims.export import check_symbolic_consistency
 
-        _SYMBOLIC_ERROR_THRESHOLD = 0.20  # 20% - fail above this
+        _SYMBOLIC_ERROR_THRESHOLD = 0.20
 
         report = check_symbolic_consistency(primitive, params, numeric_costs)
         if not report.get("available"):
@@ -475,12 +441,38 @@ def reproduce_beverland_cmd() -> None:
 
 
 @reproduce.command("ge19")
-def reproduce_ge19_cmd() -> None:
+@click.option(
+    "--skip-windowed",
+    is_flag=True,
+    help="Skip the windowed-construction rows (the window sweep costs ~1 s).",
+)
+def reproduce_ge19_cmd(skip_windowed: bool) -> None:
     """GE19 (arXiv:1905.09749v3): factor 2048-bit RSA."""
-    from ftprims.references import reproduce_ge19_logical, reproduce_ge19_physical
+    from ftprims.references import (
+        reproduce_ge19_logical,
+        reproduce_ge19_physical,
+        reproduce_ge19_windowed,
+    )
 
     click.echo("GE19 (arXiv:1905.09749v3) — logical reconciliation")
     _print_rows(reproduce_ge19_logical().rows)
+    if not skip_windowed:
+        click.echo()
+        click.echo(
+            "GE19 (arXiv:1905.09749v3) — windowed construction (§2.3-2.5), "
+            "from Qualtran components"
+        )
+        windowed = reproduce_ge19_windowed()
+        _print_rows(windowed.rows)
+        we, wm = windowed.window_argmin
+        click.echo(
+            f"  cost minimum over the window grid at n={windowed.instances[1].n}: "
+            f"(w_e, w_m) = ({we}, {wm}); GE19's own default (L690) is (5, 5)"
+        )
+        click.echo(
+            "  'bridged' doubles the adder term only, converting Qualtran's "
+            "Gidney AND-adder to GE19's Cuccaro convention (ASSUMPTIONS.md §6)"
+        )
     click.echo()
     click.echo("GE19 (arXiv:1905.09749v3) — physical rows")
     _print_rows(reproduce_ge19_physical().rows)

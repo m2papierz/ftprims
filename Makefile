@@ -61,6 +61,7 @@ sweeps:
 	@mkdir -p results/sweeps results/charts
 	$(UV) run python experiments/sweep_rotation_epsilon.py
 	$(UV) run python experiments/sweep_ge19_physical.py
+	$(UV) run python experiments/sweep_windowed_modexp.py
 	$(UV) run python experiments/landscape.py
 
 # ── Clean ────────────────────────────────────────────────────────────────────

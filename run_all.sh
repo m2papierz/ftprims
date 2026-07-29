@@ -27,7 +27,7 @@ ok()      { echo -e "${GREEN}✓ $1${NC}"; }
 fail()    { echo -e "${RED}✗ $1${NC}"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
 # Numeric runs
-section "NUMERIC RUNS (--breakdown --physical --explain-json)"
+section "NUMERIC RUNS (--breakdown --physical)"
 
 declare -a RUNS=(
     "qft        -p n=32 -p variant=textbook"
@@ -50,7 +50,7 @@ for run in "${RUNS[@]}"; do
     echo "=> $FTPRIMS run $run"
     # shellcheck disable=SC2086
     if $FTPRIMS run $run \
-        --breakdown --physical --explain-json \
+        --breakdown --physical \
         --out "$outfile"; then
         ok "$outfile"
     else
@@ -162,6 +162,9 @@ $PYTHON experiments/sweep_rotation_epsilon.py \
 
 $PYTHON experiments/sweep_ge19_physical.py \
 && ok "sweep_ge19_physical"    || fail "sweep_ge19_physical"
+
+$PYTHON experiments/sweep_windowed_modexp.py \
+&& ok "sweep_windowed_modexp"  || fail "sweep_windowed_modexp"
 
 $PYTHON experiments/landscape.py && ok "landscape" || fail "landscape"
 

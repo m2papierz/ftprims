@@ -1,11 +1,10 @@
-"""Published paper constants for the three FTQC resource-estimate reproductions.
+"""Published paper constants and the deviations achieved against them.
 
-Every literal here is a reproduction target read from a cited paper. Sources,
-free parameters, conventions and achieved deviations are documented once in
+Sources, free parameters, conventions and achieved deviations are documented in
 ``ASSUMPTIONS.md``; this module carries values, not prose.
 
-Distinct from the pinned regression literals in ``tests/test_integration.py``:
-those are what *our code* computes, these are what the *papers* report.
+Distinct from the regression literals in ``tests/test_integration.py``: those
+are what this code computes, these are what the papers report.
 """
 
 from __future__ import annotations
@@ -13,9 +12,8 @@ from __future__ import annotations
 import math
 
 # ── Beverland et al. (arXiv:2211.07629) ───────────────────────────────────────
-# Targets are the paper's eq.(D3)/(D4) evaluated. For quantum dynamics that
-# differs from the paper's printed Table I values, which contradict its own
-# equations -- see ASSUMPTIONS.md §1.
+# Targets are eq.(D3)/(D4) evaluated. For quantum dynamics that differs from the
+# printed Table I values, which contradict those equations (ASSUMPTIONS.md §1).
 BEVERLAND = {
     "quantum_dynamics": dict(  # §V-A L1369
         n_algo_qubits=100,
@@ -62,46 +60,58 @@ BEVERLAND = {
     ),
 }
 
-# Worst achieved deviation is +0.43%; rel=0.01 holds with ~2x margin.
+# Worst achieved deviation +0.43%; rel=0.01 holds with ~2x margin.
 BEVERLAND_TOL = dict(rel_c_min=0.01, rel_t_states=0.01)
 
 
-# ── Gidney & Ekerå 2019 (arXiv:1905.09749v3) ──────────────────────────────────
+# ── Gidney & Ekera 2019 (arXiv:1905.09749v3) ──────────────────────────────────
 
 
 def ge19_logical_qubits(n: int) -> float:
-    """Abstract formula: 3n + 0.002·n·lg n."""
+    """GE19 abstract L78: ``3n + 0.002·n·lg n``."""
     return 3 * n + 0.002 * n * math.log2(n)
 
 
 def ge19_toffoli_count(n: int) -> float:
-    """Abstract formula: 0.3·n³ + 0.0005·n³·lg n."""
+    """GE19 abstract L78: ``0.3·n³ + 0.0005·n³·lg n``."""
     return 0.3 * n**3 + 0.0005 * n**3 * math.log2(n)
 
 
 def ge19_measurement_depth(n: int) -> float:
-    """Abstract formula: 500·n² + n²·lg n."""
+    """GE19 abstract L78: ``500·n² + n²·lg n``."""
     return 500 * n**2 + n**2 * math.log2(n)
 
 
 def modexp_toffoli_reference(n: int, ne: float) -> float:
-    """Reference modular exponentiation, §2.2 L522: 20·ne·n²."""
+    """GE19 §2.2 L522, reference construction: ``20·ne·n²``."""
     return 20 * ne * n**2
 
 
 def modexp_toffoli_coset(n: int, ne: float) -> float:
-    """Coset representation, §2.4 L547: 8·ne·n²."""
+    """GE19 §2.4 L547, coset representation: ``8·ne·n²``."""
     return 8 * ne * n**2
 
 
 def modexp_toffoli_windowed(n: int, ne: float) -> float:
-    """Windowed arithmetic, §2.5 L602: 24·ne·n²/lg²n."""
+    """GE19 §2.5 L602, windowed arithmetic: ``24·ne·n²/lg²n``."""
     return 24 * ne * n**2 / math.log2(n) ** 2
 
 
-#: Sizes at which the measured ModExp coefficient is sampled to identify the
-#: regime from its scaling rather than a fitted constant (ASSUMPTIONS.md §3).
+def modexp_toffoli_windowed_qualtran(n: int, ne: float) -> float:
+    """``16·ne·n²/lg²n``: GE19 §2.5 L602's 24 in Qualtran's adder currency.
+
+    Not a published constant; derivation in ASSUMPTIONS.md §6.
+    """
+    return 16 * ne * n**2 / math.log2(n) ** 2
+
+
+#: Sizes at which the ModExp coefficient is sampled to identify the regime from
+#: its scaling rather than a fitted constant (ASSUMPTIONS.md §3).
 MODEXP_COEFFICIENT_SIZES = (32, 64, 128, 256, 512, 1024, 2048)
+
+#: Sizes over which the windowed coefficient's 1/lg²n falloff is sampled; this
+#: distinguishes windowed from non-windowed on scaling alone.
+WINDOWED_COEFFICIENT_SIZES = (128, 256, 512, 1024, 2048, 4096, 8192)
 
 
 GE19 = dict(
@@ -117,11 +127,11 @@ GE19 = dict(
     table1_toffoli_billions=dict(n1024=0.4, n2048=2.7, n3072=9.9),
     table1_minvol_megaqubitdays=dict(n1024=0.5, n2048=5.9, n3072=21),
     physical_rows=dict(
-        # Table 2 -- qubits/runtime/volume are EXPECTED (i.e. retry-adjusted).
+        # Table 2: qubits/runtime/volume are expected, i.e. retry-adjusted.
         one_factory=dict(factories=1, qubits_M=16, runtime_days=6.0, vol_mqd=90),
         one_thread=dict(factories=14, qubits_M=19, runtime_days=0.36, vol_mqd=6.6),
         parallel=dict(factories=28, qubits_M=20, runtime_days=0.31, vol_mqd=5.9),
-        # Table 3, n=2048 optimum -- runtime/volume are PER RUN.
+        # Table 3, n=2048 optimum: runtime/volume are per run.
         table3_authoritative=dict(
             d1=15,
             d2=27,
@@ -137,8 +147,8 @@ GE19 = dict(
     ),
 )
 
-# Reproduction inputs. error_budget and n_factories are GE19's own published
-# values, not choices -- see ASSUMPTIONS.md §2/§3.
+# Reproduction inputs. error_budget and n_factories are GE19-published values
+# rather than free choices (ASSUMPTIONS.md §2/§3).
 GE19_FTPRIMS = dict(
     error_budget=0.31,  # Table 3 retry risk
     error_budget_sweep=(0.1, 0.31, 0.33, 0.5),
@@ -147,8 +157,8 @@ GE19_FTPRIMS = dict(
     factory_count_sweep=(1, 14, 16, 28),
 )
 
-# Achieved live (qualtran 0.7.0). At nf=28 the search selects d1=15, d2=27 --
-# exactly GE19 Table 3's factory.
+# Measured against qualtran 0.7.0. At nf=28 the search selects d1=15, d2=27,
+# which is GE19 Table 3's factory.
 GE19_FTPRIMS_ACHIEVED = dict(
     one_factory=dict(
         n_factories=1,
@@ -169,7 +179,7 @@ GE19_FTPRIMS_ACHIEVED = dict(
     ),
 )
 
-# Achieved deviations are 10.5-13.7%; rel=0.18 holds with ~30% headroom.
+# Achieved deviations 10.5-13.7%; rel=0.18 holds with ~30% headroom.
 GE19_TOL = dict(
     rel_qubits=0.18,
     rel_runtime=0.18,
@@ -178,18 +188,84 @@ GE19_TOL = dict(
 )
 
 
+# ── GE19 §2.3-2.5, the windowed construction ──────────────────────────────────
+# Reproduced from Qualtran components. Distinct from the block above, which
+# reconciles GE19 against Qualtran's stock, non-windowed ModExp. Sources,
+# conventions and achieved deviations: ASSUMPTIONS.md §6.
+
+GE19_WINDOWED = dict(
+    # Construction parameters, all GE19-published rather than free choices.
+    exp_window=5,  # g_exp, GE19 §2.7 L690
+    mul_window=5,  # g_mul, GE19 L690
+    n_e_factor=1.5,  # Ekera-Hastad, GE19 L482
+    runway_sep=None,  # g_sep excluded from the count; ASSUMPTIONS.md §6
+    ge19_runway_sep=1024,  # GE19 L690 / Table 3, for the sensitivity probe only
+    coset_padding=dict(n1024=40, n2048=43, n3072=45),  # 2 lg n + lg n_e + 10, L690
+    # GE19's own ancillary cost model at matched parameters. Weaker provenance
+    # than the Table 1 literals (ASSUMPTIONS.md §6).
+    anc_model_toffoli=dict(n1024=4.2100e8, n2048=2.7534e9, n3072=8.6211e9),
+)
+
+# Measured against qualtran==0.7.0 from the built WindowedModExp bloq, at the
+# per-n cost argmin over w_e, w_m in [3,8], w_m <= w_e.
+GE19_WINDOWED_ACHIEVED = dict(
+    n1024=dict(
+        window=(5, 4),
+        total_ccz=265_951_224,
+        adder_ccz=174_833_736,
+        lookup_ccz=83_880_720,
+        unlookup_ccz=7_236_768,
+        bridged_ccz=440_784_960,
+    ),
+    n2048=dict(
+        window=(5, 5),
+        total_ccz=1_634_753_640,
+        adder_ccz=1_077_123_300,
+        lookup_ccz=526_708_140,
+        unlookup_ccz=30_922_200,
+        bridged_ccz=2_711_876_940,
+    ),
+    n3072=dict(
+        window=(5, 5),
+        total_ccz=4_830_453_888,
+        adder_ccz=3_585_444_096,
+        lookup_ccz=1_175_970_432,
+        unlookup_ccz=69_039_360,
+        bridged_ccz=8_415_897_984,
+    ),
+    window_argmin_n2048=(5, 5),
+    runway_uplift_n2048=0.0353,  # count uplift from runways on at GE19's g_sep
+)
+
+# Every band was set from a measured deviation; the achieved values and the
+# cause of each gap are tabulated in ASSUMPTIONS.md §6.
+GE19_WINDOWED_TOL = dict(
+    bridged_table1_lo=dict(n1024=0.95, n2048=0.95, n3072=0.78),
+    bridged_table1_hi=dict(n1024=1.20, n2048=1.10, n3072=0.95),
+    table1_lo=dict(n1024=0.60, n2048=0.55, n3072=0.43),
+    table1_hi=dict(n1024=0.75, n2048=0.68, n3072=0.58),
+    bridged_anc_lo=0.94,
+    bridged_anc_hi=1.08,
+    adder_share_lo=0.60,
+    adder_share_hi=0.72,
+    falloff_lg2_lo=14.0,
+    falloff_lg2_hi=17.0,
+    rel_closed_form_16=0.10,
+)
+
+
 # ── Gidney 2025 (arXiv:2505.15917) ────────────────────────────────────────────
 
 G2025 = dict(
     n=2048,
     logical_qubits=1399,  # Table 5
-    toffoli_count=6.5e9,  # Table 5, expected per factoring (not per shot)
+    toffoli_count=6.5e9,  # Table 5, expected per factoring, not per shot
     expected_shots=9.2,  # Table 5
     phys_err=1e-3,  # abstract, same as GE19
     cycle_us=1.0,
     reaction_us=10.0,
-    headline_physical_qubits="<1e6",  # abstract
-    headline_runtime="<1 week",  # abstract
+    published_physical_qubits="<1e6",  # abstract
+    published_runtime="<1 week",  # abstract
     qubit_reduction_sources=dict(
         algorithmic=[
             "approximate residue arithmetic (Chevignard-Fouque-Schrottenloher)"
@@ -201,7 +277,7 @@ G2025 = dict(
     ),
 )
 
-# Achieved live (qualtran 0.7.0) at error_budget=0.31, per Toffoli convention.
+# Measured against qualtran 0.7.0 at error_budget=0.31, per Toffoli convention.
 G2025_FTPRIMS = dict(
     error_budget=0.31,
     per_run=dict(
@@ -228,6 +304,6 @@ G2025_FTPRIMS = dict(
     ),
 )
 
-# The paper's < 1M is NOT reproducible by this model; rel=0.20 guards drift only.
-# Ratio band covers the achieved 2.63x-5.64x span.
+# The paper's < 1M is not reproducible by this model; rel=0.20 guards drift
+# only. The ratio band covers the achieved 2.63x-5.64x span.
 G2025_TOL = dict(rel_qubits=0.20, algo_ratio_lo=2.5, algo_ratio_hi=6.0)
