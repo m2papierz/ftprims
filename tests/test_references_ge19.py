@@ -1,7 +1,7 @@
 """GE19 reproduction (arXiv:1905.09749v3).
 
 Logical-count reconciliation and the physical rows, asserted against targets in
-``ftprims.references.values``. Sources, conventions and achieved deviations:
+``qrepro.references.values``. Sources, conventions and achieved deviations:
 ASSUMPTIONS.md.
 """
 
@@ -11,16 +11,16 @@ import math
 
 import pytest
 
-from ftprims.algorithms.windowed_factoring import windowed_term_breakdown
-from ftprims.references import (
+from qrepro.algorithms.windowed_factoring import windowed_term_breakdown
+from qrepro.references import (
     reproduce_ge19_logical,
     reproduce_ge19_physical,
     reproduce_ge19_windowed,
 )
-from ftprims.references.values import (
+from qrepro.references.values import (
     GE19,
-    GE19_FTPRIMS,
-    GE19_FTPRIMS_ACHIEVED,
+    GE19_QREPRO,
+    GE19_QREPRO_ACHIEVED,
     GE19_TOL,
     GE19_WINDOWED,
     GE19_WINDOWED_ACHIEVED,
@@ -68,7 +68,7 @@ def test_modexp_and_only_count_pinned():
     """
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
-    from ftprims.algorithms.factoring import make_shor_modexp
+    from qrepro.algorithms.factoring import make_shor_modexp
 
     gates = get_cost_value(make_shor_modexp(GE19["n"]), QECGatesCost())
     assert int(gates.and_bloq) == GE19["modexp_qualtran_and_only"]
@@ -90,8 +90,8 @@ def test_factoring_bloqs_build_at_every_tabulated_size(n):
     """
     import math
 
-    from ftprims.algorithms.factoring import make_shor_modexp, placeholder_modulus
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.algorithms.factoring import make_shor_modexp, placeholder_modulus
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
     mod = placeholder_modulus(n, 7)
     assert mod.bit_length() == n
@@ -103,7 +103,7 @@ def test_factoring_bloqs_build_at_every_tabulated_size(n):
 
 def test_placeholder_modulus_does_not_move_the_pinned_count():
     """The n=2048 modulus is unchanged, so the pinned literals cannot shift."""
-    from ftprims.algorithms.factoring import placeholder_modulus
+    from qrepro.algorithms.factoring import placeholder_modulus
 
     assert placeholder_modulus(GE19["n"], 7) == (1 << GE19["n"]) - 1
 
@@ -284,7 +284,7 @@ def test_windowed_emits_no_cswap():
     """Guards the uncontrolled-multiplication decision (ASSUMPTIONS.md §6)."""
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
     gates = get_cost_value(make_ge19_windowed_modexp(GE19["n"]), QECGatesCost())
     assert int(gates.cswap) == 0
@@ -295,7 +295,7 @@ def test_windowed_uses_both_gate_fields():
     ``toffoli``, so and_bloq-only extraction must fail loudly."""
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
     gates = get_cost_value(make_ge19_windowed_modexp(GE19["n"]), QECGatesCost())
     assert int(gates.and_bloq) > 0
@@ -311,7 +311,7 @@ def test_windowed_call_graph_stays_collapsed():
     Building the QROAMClean from data instead of bitsize would make every
     lookup addition a distinct bloq and the count would never terminate.
     """
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
     graph, _ = make_ge19_windowed_modexp(GE19["n"]).call_graph()
     assert graph.number_of_nodes() < 30, graph.number_of_nodes()
@@ -320,8 +320,8 @@ def test_windowed_call_graph_stays_collapsed():
 def test_windowed_logical_costs_use_full_magic_state_count():
     """modexp_logical_costs must aggregate n_ccz, not and_bloq, on the
     windowed construction whose unlookup term lives in ``toffoli``."""
-    from ftprims.algorithms.factoring import modexp_logical_costs
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.algorithms.factoring import modexp_logical_costs
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
     n = GE19["n"]
     costs = modexp_logical_costs(
@@ -346,7 +346,7 @@ def test_windowed_is_far_cheaper_than_stock_modexp():
 
 def test_windowed_lookup_addition_classical_action():
     """y -> y + table[addr], address restored, no junk left."""
-    from ftprims.algorithms.windowed_factoring import LookupAddition
+    from qrepro.algorithms.windowed_factoring import LookupAddition
 
     bloq = LookupAddition(lookup_bitsize=2, width=5, table=(3, 1, 4, 2))
     decomposed = bloq.decompose_bloq()
@@ -363,7 +363,7 @@ def test_windowed_lookup_addition_classical_action():
 
 def test_windowed_multiply_add_classical_action():
     """y -> y + x·(multiplier^addr) mod N through the real decomposition."""
-    from ftprims.algorithms.windowed_factoring import WindowedMultiplyAdd
+    from qrepro.algorithms.windowed_factoring import WindowedMultiplyAdd
 
     mod, multiplier = 15, 7
     bloq = WindowedMultiplyAdd(
@@ -392,7 +392,7 @@ def test_windowed_mod_mul_clears_its_source_register():
 
     ``bb.free`` raises if the unmultiply left anything behind.
     """
-    from ftprims.algorithms.windowed_factoring import WindowedModMul
+    from qrepro.algorithms.windowed_factoring import WindowedModMul
 
     mod, base_power = 15, 7
     bloq = WindowedModMul(
@@ -422,7 +422,7 @@ def test_windowed_modexp_classical_action(mod, base, n, ne):
 
     Window-indexing errors show up here as a wrong residue at some exponent.
     """
-    from ftprims.algorithms.windowed_factoring import WindowedModExp
+    from qrepro.algorithms.windowed_factoring import WindowedModExp
 
     bloq = WindowedModExp(
         base=base,
@@ -455,7 +455,7 @@ def test_windowed_modexp_classical_action(mod, base, n, ne):
 )
 def test_windowed_modexp_rejects_bad_parameters(kwargs, message):
     """Fail closed at the boundary with an actionable message."""
-    from ftprims.algorithms.windowed_factoring import WindowedModExp
+    from qrepro.algorithms.windowed_factoring import WindowedModExp
 
     params = dict(exp_bitsize=4, x_bitsize=4, exp_window=2, mul_window=2)
     params.update(kwargs)
@@ -465,7 +465,7 @@ def test_windowed_modexp_rejects_bad_parameters(kwargs, message):
 
 def test_windowed_exact_modular_requires_zero_padding():
     """Coset padding and exact ModAdd are alternatives, not composable."""
-    from ftprims.algorithms.windowed_factoring import WindowedModExp
+    from qrepro.algorithms.windowed_factoring import WindowedModExp
 
     with pytest.raises(ValueError, match="coset_padding=0"):
         WindowedModExp(
@@ -481,7 +481,7 @@ def test_windowed_exact_modular_requires_zero_padding():
 
 
 def test_windowed_lookup_addition_rejects_wrong_table_size():
-    from ftprims.algorithms.windowed_factoring import LookupAddition
+    from qrepro.algorithms.windowed_factoring import LookupAddition
 
     with pytest.raises(ValueError, match="2\\^lookup_bitsize"):
         LookupAddition(lookup_bitsize=2, width=5, table=(1, 2, 3))
@@ -491,7 +491,7 @@ def test_windowed_refuses_to_decompose_without_table_data():
     """At scale the data-free call graph is the costing path."""
     from qualtran import DecomposeTypeError
 
-    from ftprims.algorithms.windowed_factoring import LookupAddition
+    from qrepro.algorithms.windowed_factoring import LookupAddition
 
     with pytest.raises(DecomposeTypeError, match="table"):
         LookupAddition(lookup_bitsize=3, width=8).decompose_bloq()
@@ -503,8 +503,8 @@ def test_windowed_runway_exclusion_is_measurable(windowed):
     This construction's uplift diverges from GE19's own model; the divergence
     is recorded rather than reconciled in ASSUMPTIONS.md §6.
     """
-    from ftprims.algorithms.windowed_factoring import make_ge19_windowed_modexp
-    from ftprims.references.ge19_windowed import windowed_total_ccz
+    from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
+    from qrepro.references.ge19_windowed import windowed_total_ccz
 
     n = GE19["n"]
     assert make_ge19_windowed_modexp(n).runway_sep is GE19_WINDOWED["runway_sep"]
@@ -523,7 +523,7 @@ def test_windowed_runway_exclusion_is_measurable(windowed):
 
 def test_ge19_uses_papers_own_inputs(physical):
     """Both free parameters are GE19's published values, not choices."""
-    assert physical.error_budget == GE19_FTPRIMS["error_budget"] == 0.31
+    assert physical.error_budget == GE19_QREPRO["error_budget"] == 0.31
     assert physical.retry_risk == GE19["physical_rows"]["table3_authoritative"]["retry"]
     assert physical.one_factory.n_factories == 1
     assert physical.parallel.n_factories == 28
@@ -542,7 +542,7 @@ def test_ge19_grid_search_finds_papers_own_factory(physical):
 def test_ge19_one_factory_qubits(physical):
     """1-factory qubits vs Table 2's 16 M (+12.3%)."""
     ph = physical.one_factory
-    achieved = GE19_FTPRIMS_ACHIEVED["one_factory"]
+    achieved = GE19_QREPRO_ACHIEVED["one_factory"]
     assert ph.physical_qubits / 1e6 == pytest.approx(
         GE19["physical_rows"]["one_factory"]["qubits_M"], rel=GE19_TOL["rel_qubits"]
     )
@@ -568,7 +568,7 @@ def test_ge19_parallel_qubits(physical):
         GE19["physical_rows"]["parallel"]["qubits_M"], rel=GE19_TOL["rel_qubits"]
     )
     assert ph.physical_qubits / 1e6 == pytest.approx(
-        GE19_FTPRIMS_ACHIEVED["parallel"]["qubits_M"], rel=0.02
+        GE19_QREPRO_ACHIEVED["parallel"]["qubits_M"], rel=0.02
     )
 
 

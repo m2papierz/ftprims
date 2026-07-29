@@ -16,8 +16,8 @@ from typing import Any
 import yaml
 from qref import SchemaV1
 
-from ftprims.algorithms._base import LogicalCosts
-from ftprims.config import DEFAULT_CONFIG, QREFConfig
+from qrepro.algorithms._base import LogicalCosts
+from qrepro.config import DEFAULT_CONFIG, QREFConfig
 
 # Hand-written asymptotic formulas, not derived from the Qualtran benchmark.
 # Keyed by ``(primitive, variant_or_op)``; ``required_params`` lists the symbols
@@ -141,7 +141,7 @@ _SYMBOLIC_META: dict[str, str] = {
         "Resource expressions are textbook-level approximations. "
         "They capture dominant scaling but may diverge from the "
         "numeric Qualtran benchmark at concrete parameter values. "
-        "Use 'ftprims export-qref --check' to compare."
+        "Use 'qrepro export-qref --check' to compare."
     ),
 }
 

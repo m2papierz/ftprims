@@ -80,8 +80,8 @@ DOMAINS: dict[str, dict] = {
 
 
 def collect() -> dict[str, list[tuple[float, float]]]:
-    from ftprims.algorithms import registry
-    from ftprims.physical import PhysicalModelSpec, estimate_physical
+    from qrepro.algorithms import registry
+    from qrepro.physical import PhysicalModelSpec, estimate_physical
 
     results: dict[str, list[tuple[float, float]]] = {}
     for domain, spec in DOMAINS.items():

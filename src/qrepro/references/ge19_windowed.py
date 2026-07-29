@@ -1,8 +1,8 @@
 """GE19 §2.3-2.5 windowed construction, reproduced.
 
 Derives GE19's logical layer through Qualtran components
-(``ftprims.algorithms.windowed_factoring``) rather than the paper's closed
-forms. Separate from ``ftprims.references.ge19``, which reconciles the paper
+(``qrepro.algorithms.windowed_factoring``) rather than the paper's closed
+forms. Separate from ``qrepro.references.ge19``, which reconciles the paper
 against Qualtran's stock, non-windowed ``ModExp``.
 
 Sources, counting conventions and the measured divergences: ASSUMPTIONS.md §6.
@@ -12,13 +12,13 @@ from __future__ import annotations
 
 import attrs
 
-from ftprims.algorithms.windowed_factoring import (
+from qrepro.algorithms.windowed_factoring import (
     ge19_exponent_bitsize,
     make_ge19_windowed_modexp,
     windowed_term_breakdown,
 )
-from ftprims.references._base import ReproductionRow
-from ftprims.references.values import (
+from qrepro.references._base import ReproductionRow
+from qrepro.references.values import (
     GE19,
     GE19_WINDOWED,
     WINDOWED_COEFFICIENT_SIZES,

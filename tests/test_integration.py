@@ -6,9 +6,9 @@ from typing import NamedTuple
 
 import pytest
 
-from ftprims.algorithms import registry
-from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
-from ftprims.physical import PhysicalModelSpec, estimate_physical
+from qrepro.algorithms import registry
+from qrepro.breakdown import extract_structural_breakdown, summarize_breakdown
+from qrepro.physical import PhysicalModelSpec, estimate_physical
 
 
 class Case(NamedTuple):

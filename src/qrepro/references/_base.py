@@ -13,7 +13,7 @@ import attrs
 class ReproductionRow:
     """One line of a reproduction comparison table.
 
-    ``reproduced`` is the ftprims number and ``target`` the paper value, or
+    ``reproduced`` is the qrepro number and ``target`` the paper value, or
     ``None`` where there is no single paper target. ``deviation`` is
     ``(reproduced - target) / target`` when both are present.
     """

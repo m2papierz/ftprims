@@ -4,8 +4,8 @@ from __future__ import annotations
 
 
 def main() -> None:
-    """Run the ftprims CLI."""
-    from ftprims.cli import main as cli_main
+    """Run the qrepro CLI."""
+    from qrepro.cli import main as cli_main
 
     cli_main()
 

@@ -1,4 +1,4 @@
-"""ftprims CLI: run benchmarks, verify, export QREF, compile with Bartiq,
+"""qrepro CLI: run benchmarks, verify, export QREF, compile with Bartiq,
 and print the published-estimate reproductions."""
 
 from __future__ import annotations
@@ -10,20 +10,20 @@ from pathlib import Path
 
 import click
 
-from ftprims.algorithms import registry
-from ftprims.config import DEFAULT_CONFIG, FTPrimsConfig
+from qrepro.algorithms import registry
+from qrepro.config import DEFAULT_CONFIG, QreproConfig
 
 
-def _load_config(path: str | None) -> FTPrimsConfig:
+def _load_config(path: str | None) -> QreproConfig:
     if path is not None:
-        return FTPrimsConfig.load(path)
+        return QreproConfig.load(path)
     return DEFAULT_CONFIG
 
 
 @click.group()
-@click.version_option(package_name="ftprims")
+@click.version_option(package_name="qrepro")
 def main() -> None:
-    """ftprims - FTQC primitives benchmark suite."""
+    """qrepro - FTQC primitives benchmark suite."""
 
 
 @main.command()
@@ -144,7 +144,7 @@ def run(
     if breakdown:
         import attrs
 
-        from ftprims.breakdown import extract_structural_breakdown, summarize_breakdown
+        from qrepro.breakdown import extract_structural_breakdown, summarize_breakdown
 
         items = extract_structural_breakdown(
             bloq,
@@ -158,8 +158,8 @@ def run(
         )
 
     if physical:
-        from ftprims.physical import PhysicalModelSpec
-        from ftprims.physical import estimate_physical as phys_estimate
+        from qrepro.physical import PhysicalModelSpec
+        from qrepro.physical import estimate_physical as phys_estimate
 
         spec = PhysicalModelSpec(
             profile=profile,
@@ -286,10 +286,10 @@ def export_qref(
     """Export a benchmark as a QREF v1 program.
 
     Numeric mode embeds concrete resource values. --symbolic writes analytic
-    expressions for ``ftprims bartiq`` to compile; --check compares them
+    expressions for ``qrepro bartiq`` to compile; --check compares them
     against the Qualtran benchmark at the given parameters.
     """
-    from ftprims.export import build_qref_program, save_qref
+    from qrepro.export import build_qref_program, save_qref
 
     cfg = _load_config(config_path)
     bench = registry[primitive]
@@ -303,7 +303,7 @@ def export_qref(
         numeric_costs = bench.logical_costs(bloq)
 
     if symbolic:
-        from ftprims.algorithms._base import LogicalCosts
+        from qrepro.algorithms._base import LogicalCosts
 
         # Symbolic mode reads its costs from the formula table, not from here.
         costs = LogicalCosts(
@@ -337,7 +337,7 @@ def export_qref(
         )
 
     if check and symbolic and numeric_costs is not None:
-        from ftprims.export import check_symbolic_consistency
+        from qrepro.export import check_symbolic_consistency
 
         _SYMBOLIC_ERROR_THRESHOLD = 0.20
 
@@ -434,7 +434,7 @@ def _print_rows(rows) -> None:
 @reproduce.command("beverland")
 def reproduce_beverland_cmd() -> None:
     """Beverland et al. (arXiv:2211.07629): three application data points."""
-    from ftprims.references import reproduce_beverland
+    from qrepro.references import reproduce_beverland
 
     click.echo("Beverland et al. (arXiv:2211.07629)")
     _print_rows(reproduce_beverland().rows)
@@ -448,7 +448,7 @@ def reproduce_beverland_cmd() -> None:
 )
 def reproduce_ge19_cmd(skip_windowed: bool) -> None:
     """GE19 (arXiv:1905.09749v3): factor 2048-bit RSA."""
-    from ftprims.references import (
+    from qrepro.references import (
         reproduce_ge19_logical,
         reproduce_ge19_physical,
         reproduce_ge19_windowed,
@@ -491,8 +491,8 @@ def reproduce_ge19_cmd(skip_windowed: bool) -> None:
 )
 def reproduce_decomposition_cmd(convention: str) -> None:
     """2019 => 2025 decomposition (arXiv:2505.15917)."""
-    from ftprims.references import reproduce_2019_to_2025
-    from ftprims.references.decomposition import CONVENTIONS
+    from qrepro.references import reproduce_2019_to_2025
+    from qrepro.references.decomposition import CONVENTIONS
 
     conventions = CONVENTIONS if convention == "both" else (convention,)
     for conv in conventions:

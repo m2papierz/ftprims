@@ -16,13 +16,13 @@ from qualtran.bloqs.arithmetic import Add, LessThanEqual, OutOfPlaceAdder
 from qualtran.bloqs.arithmetic.multiplication import Product
 from qualtran.bloqs.mod_arithmetic.mod_addition import ModAdd
 
-from ftprims.algorithms._base import (
+from qrepro.algorithms._base import (
     Benchmark,
     LogicalCosts,
     VerificationResult,
     register,
 )
-from ftprims.resource import extract_logical_costs
+from qrepro.resource import extract_logical_costs
 
 __all__ = ["ArithmeticBenchmark"]
 

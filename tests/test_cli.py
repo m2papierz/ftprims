@@ -10,13 +10,13 @@ import subprocess
 
 import pytest
 
-from ftprims.algorithms import registry
+from qrepro.algorithms import registry
 
 
 def _run_cli(*args: str) -> dict:
-    """Run ``ftprims run ...`` and parse the JSON from stdout."""
+    """Run ``qrepro run ...`` and parse the JSON from stdout."""
     result = subprocess.run(
-        ["ftprims", "run", *args],
+        ["qrepro", "run", *args],
         capture_output=True,
         text=True,
         timeout=120,

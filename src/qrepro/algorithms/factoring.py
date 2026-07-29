@@ -12,7 +12,7 @@ import math
 from qualtran import Bloq
 from qualtran.resource_counting import QECGatesCost, get_cost_value
 
-from ftprims.algorithms._base import LogicalCosts
+from qrepro.algorithms._base import LogicalCosts
 
 
 def placeholder_modulus(n_bits: int, base: int) -> int:

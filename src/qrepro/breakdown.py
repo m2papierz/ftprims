@@ -12,8 +12,8 @@ from collections import defaultdict
 from qualtran import Bloq
 from qualtran.resource_counting import QECGatesCost, get_cost_value
 
-from ftprims.algorithms._base import BreakdownItem
-from ftprims.resource import (
+from qrepro.algorithms._base import BreakdownItem
+from qrepro.resource import (
     _default_generalizer,
     _extract_via_call_graph,
     _leaf_gate_costs,

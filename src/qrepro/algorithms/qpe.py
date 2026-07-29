@@ -17,13 +17,13 @@ from qualtran.bloqs.basic_gates import ZPowGate
 from qualtran.bloqs.phase_estimation.qpe_window_state import RectangularWindowState
 from qualtran.bloqs.phase_estimation.text_book_qpe import TextbookQPE
 
-from ftprims.algorithms._base import (
+from qrepro.algorithms._base import (
     Benchmark,
     LogicalCosts,
     VerificationResult,
     register,
 )
-from ftprims.resource import extract_logical_costs
+from qrepro.resource import extract_logical_costs
 
 __all__ = ["QPEBenchmark"]
 

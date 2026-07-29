@@ -5,10 +5,10 @@ from __future__ import annotations
 import pytest
 import yaml
 
-from ftprims.algorithms import registry
-from ftprims.breakdown import extract_structural_breakdown
-from ftprims.config import DEFAULT_CONFIG
-from ftprims.export import build_qref_program, save_qref
+from qrepro.algorithms import registry
+from qrepro.breakdown import extract_structural_breakdown
+from qrepro.config import DEFAULT_CONFIG
+from qrepro.export import build_qref_program, save_qref
 
 QREF_CASES = [
     ("qft", dict(n=32, variant="textbook"), 16),
@@ -160,7 +160,7 @@ def test_breakdown_per_item(key):
 
 def test_breakdown_no_unexpected_components():
     """Breakdown components must only be from the known taxonomy."""
-    from ftprims.breakdown import COMPONENTS
+    from qrepro.breakdown import COMPONENTS
 
     allowed = set(COMPONENTS)
     for key, params in _BUILD_PARAMS.items():

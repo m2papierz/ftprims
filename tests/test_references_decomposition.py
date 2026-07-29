@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from ftprims.references import reproduce_2019_to_2025
-from ftprims.references.decomposition import CONVENTIONS, _toffoli_counts
-from ftprims.references.values import G2025, G2025_FTPRIMS, G2025_TOL, GE19
+from qrepro.references import reproduce_2019_to_2025
+from qrepro.references.decomposition import CONVENTIONS, _toffoli_counts
+from qrepro.references.values import G2025, G2025_QREPRO, G2025_TOL, GE19
 
 _FACTORY_COUNTS = (1, 16, 28)
 
@@ -43,7 +43,7 @@ def test_g2025_through_model_reproduces(decompositions, convention, n_factories)
     rel=0.20 guards drift only; the paper's < 1M is not reproducible here.
     """
     g2025 = decompositions[convention].by_factories(n_factories).g2025
-    expected = G2025_FTPRIMS[convention][f"g2025_{n_factories}f_qubits_M"]
+    expected = G2025_QREPRO[convention][f"g2025_{n_factories}f_qubits_M"]
     assert g2025.physical_qubits / 1e6 == pytest.approx(
         expected, rel=G2025_TOL["rel_qubits"]
     )
@@ -72,4 +72,4 @@ def test_convention_choice_is_recorded(decompositions):
     """A decomposition carries the convention it was computed under."""
     for conv, d in decompositions.items():
         assert d.convention == conv
-        assert d.error_budget == G2025_FTPRIMS["error_budget"] == 0.31
+        assert d.error_budget == G2025_QREPRO["error_budget"] == 0.31

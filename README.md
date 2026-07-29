@@ -1,4 +1,4 @@
-# ftprims
+# qrepro
 
 Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Builds canonical FTQC building blocks on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq), extracts logical and surface-code physical resource costs, verifies correctness by small-scale simulation, and exports programs to [QREF](https://github.com/PsiQ/qref) for symbolic cost propagation in [Bartiq](https://github.com/PsiQ/bartiq). Published resource estimates from Beverland et al., Gidney–Ekera 2019 and Gidney 2025 are reproduced against pinned dependency versions and asserted in the test suite.
 
@@ -15,23 +15,23 @@ Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Builds canon
 Requires Python 3.10–3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
-git clone https://github.com/m2papierz/ftprims.git && cd ftprims
+git clone https://github.com/m2papierz/qrepro.git && cd qrepro
 make install      # uv sync
 make setup        # additionally installs pre-commit hooks
 ```
 
 ## Usage
 
-All commands go through `uv run ftprims` (or bare `ftprims` inside an activated venv).
+All commands go through `uv run qrepro` (or bare `qrepro` inside an activated venv).
 
 ### Run a benchmark
 
 ```bash
-uv run ftprims run qft -p n=32                          # logical costs only
-uv run ftprims run qft -p n=32 --physical               # + surface-code physical estimate
-uv run ftprims run qft -p n=32 --physical --breakdown   # + per-component cost attribution
-uv run ftprims run arithmetic -p n=64 -p op=mul
-uv run ftprims run qrom -p data_size=256 -p variant=selectswap -p log_block_sizes=4
+uv run qrepro run qft -p n=32                          # logical costs only
+uv run qrepro run qft -p n=32 --physical               # + surface-code physical estimate
+uv run qrepro run qft -p n=32 --physical --breakdown   # + per-component cost attribution
+uv run qrepro run arithmetic -p n=64 -p op=mul
+uv run qrepro run qrom -p data_size=256 -p variant=selectswap -p log_block_sizes=4
 ```
 
 `--out results/qft.json` saves the result as JSON.
@@ -39,10 +39,10 @@ uv run ftprims run qrom -p data_size=256 -p variant=selectswap -p log_block_size
 ### Physical model variants
 
 ```bash
-uv run ftprims run qft -p n=32 --physical \
+uv run qrepro run qft -p n=32 --physical \
   --profile beverland --data-block fast --factory fifteen_to_one
-uv run ftprims run qft -p n=32 --physical --data-d 21             # fixed code distance
-uv run ftprims run qft -p n=32 --physical --error-budget 1e-2     # custom error budget
+uv run qrepro run qft -p n=32 --physical --data-d 21             # fixed code distance
+uv run qrepro run qft -p n=32 --physical --error-budget 1e-2     # custom error budget
 ```
 
 Profiles: `gidney_fowler` (default), `beverland`. Data blocks: `simple` (default), `compact`, `fast`. Factories: `ccz2t` (default), `fifteen_to_one`.
@@ -50,10 +50,10 @@ Profiles: `gidney_fowler` (default), `beverland`. Data blocks: `simple` (default
 ### Verify, export, compile
 
 ```bash
-uv run ftprims verify qft -p n=4 -p variant=textbook          # small-scale simulation
-uv run ftprims export-qref qft -p n=32 --out qft.yaml         # numeric QREF (authoritative)
-uv run ftprims export-qref qft -p n=32 --symbolic --check --out qft_sym.yaml
-uv run ftprims bartiq qft_sym.yaml --assign n=64
+uv run qrepro verify qft -p n=4 -p variant=textbook          # small-scale simulation
+uv run qrepro export-qref qft -p n=32 --out qft.yaml         # numeric QREF (authoritative)
+uv run qrepro export-qref qft -p n=32 --symbolic --check --out qft_sym.yaml
+uv run qrepro bartiq qft_sym.yaml --assign n=64
 ```
 
 > [!IMPORTANT]
@@ -62,9 +62,9 @@ uv run ftprims bartiq qft_sym.yaml --assign n=64
 ### Configuration
 
 ```bash
-uv run ftprims dump-config                       # print defaults
-uv run ftprims dump-config --out config.yaml     # save, edit, then:
-uv run ftprims run qft -p n=32 --config config.yaml
+uv run qrepro dump-config                       # print defaults
+uv run qrepro dump-config --out config.yaml     # save, edit, then:
+uv run qrepro run qft -p n=32 --config config.yaml
 ```
 
 Key options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget` (default `1e-3`), `physical_error`, `cycle_time_us`, `data_d`. Each has a per-run CLI override (`--rotation-eps`, `--error-budget`, `--physical-error`, `--cycle-time-us`, `--data-d`).
@@ -95,7 +95,7 @@ Modular exponentiation (reference and windowed) lives in `algorithms/factoring.p
 ## Layout
 
 ```
-src/ftprims/
+src/qrepro/
 ├── algorithms/      # primitive benchmarks + the Benchmark protocol and registry
 ├── references/      # published-estimate reproductions; values.py holds every paper constant
 ├── resource.py      # logical-cost extraction from Qualtran's QECGatesCost
@@ -111,14 +111,14 @@ tests/               # 167 tests, pinned regression literals
 ## Reproductions
 
 ```bash
-uv run ftprims reproduce beverland
-uv run ftprims reproduce ge19                   # --skip-windowed to omit the window sweep
-uv run ftprims reproduce decomposition          # --convention per_run|expected|both
+uv run qrepro reproduce beverland
+uv run qrepro reproduce ge19                   # --skip-windowed to omit the window sweep
+uv run qrepro reproduce decomposition          # --convention per_run|expected|both
 ```
 
 Measured against `qualtran==0.7.0`:
 
-| target | source | published | ftprims | deviation |
+| target | source | published | qrepro | deviation |
 |---|---|---|---|---|
 | Beverland quantum dynamics — `c_min` | (D3) | 1.4401e6 | 1.4401e6 | +0.00% |
 | Beverland quantum chemistry — `c_min` | (D3) | 4.1e11 | 4.1176e11 | +0.43% |

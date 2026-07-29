@@ -13,13 +13,13 @@ from qualtran import Bloq
 from qualtran.bloqs.data_loading.qrom import QROM
 from qualtran.bloqs.data_loading.select_swap_qrom import SelectSwapQROM
 
-from ftprims.algorithms._base import (
+from qrepro.algorithms._base import (
     Benchmark,
     LogicalCosts,
     VerificationResult,
     register,
 )
-from ftprims.resource import extract_logical_costs
+from qrepro.resource import extract_logical_costs
 
 __all__ = ["QROMBenchmark"]
 

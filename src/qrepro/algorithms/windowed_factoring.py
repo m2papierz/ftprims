@@ -7,7 +7,7 @@
 
 Costs come from ``build_call_graph`` only; ``build_composite_bloq`` materialises
 real lookup tables and is for the toy-size correctness tests. Extract with
-:func:`ftprims.algorithms.factoring.modexp_logical_costs`.
+:func:`qrepro.algorithms.factoring.modexp_logical_costs`.
 
 Leaf costs, counting conventions, parameter sources and the measured
 divergences from GE19 Table 1: ASSUMPTIONS.md §6.
@@ -36,7 +36,7 @@ from qualtran.bloqs.data_loading.qroam_clean import QROAMClean, QROAMCleanAdjoin
 from qualtran.bloqs.mod_arithmetic import ModAdd
 from qualtran.resource_counting import QECGatesCost, get_bloq_call_graph, get_cost_value
 
-from ftprims.algorithms.factoring import placeholder_modulus
+from qrepro.algorithms.factoring import placeholder_modulus
 
 if TYPE_CHECKING:
     from qualtran import BloqBuilder, Soquet, SoquetT

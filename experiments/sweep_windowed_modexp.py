@@ -18,13 +18,13 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from _style import FIG_DUAL, PALETTE, apply_theme, light_grid, savefig
-from ftprims.algorithms.windowed_factoring import (
+from qrepro.algorithms.windowed_factoring import (
     ge19_exponent_bitsize,
     make_ge19_windowed_modexp,
     windowed_term_breakdown,
 )
-from ftprims.references.ge19_windowed import WINDOW_GRID, windowed_best_window
-from ftprims.references.values import GE19, GE19_WINDOWED, WINDOWED_COEFFICIENT_SIZES
+from qrepro.references.ge19_windowed import WINDOW_GRID, windowed_best_window
+from qrepro.references.values import GE19, GE19_WINDOWED, WINDOWED_COEFFICIENT_SIZES
 
 GRID_N = GE19["n"]  # 2048
 GE19_DEFAULT_WINDOW = (GE19_WINDOWED["exp_window"], GE19_WINDOWED["mul_window"])

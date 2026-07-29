@@ -10,10 +10,10 @@ This subpackage may import from the core modules; they never import from it.
 
 from __future__ import annotations
 
-from ftprims.references.beverland import reproduce_beverland
-from ftprims.references.decomposition import reproduce_2019_to_2025
-from ftprims.references.ge19 import reproduce_ge19_logical, reproduce_ge19_physical
-from ftprims.references.ge19_windowed import (
+from qrepro.references.beverland import reproduce_beverland
+from qrepro.references.decomposition import reproduce_2019_to_2025
+from qrepro.references.ge19 import reproduce_ge19_logical, reproduce_ge19_physical
+from qrepro.references.ge19_windowed import (
     reproduce_ge19_windowed,
     windowed_total_ccz,
 )

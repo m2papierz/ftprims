@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Run every ftprims benchmark, verify, export, and sweep.
-# Requires: uv sync (or override FTPRIMS / PYTHON if installed another way)
+# Run every qrepro benchmark, verify, export, and sweep.
+# Requires: uv sync (or override QREPRO / PYTHON if installed another way)
 set -uo pipefail
 
-FTPRIMS="${FTPRIMS:-uv run ftprims}"
+QREPRO="${QREPRO:-uv run qrepro}"
 PYTHON="${PYTHON:-uv run python}"
 
 RESULTS="results"
@@ -47,9 +47,9 @@ for run in "${RUNS[@]}"; do
     slug=$(echo "$run" | tr -s ' ' | sed 's/ -p /_ /g; s/ //g; s/^_//')
     outfile="${RUNS_DIR}/run_${slug}.json"
 
-    echo "=> $FTPRIMS run $run"
+    echo "=> $QREPRO run $run"
     # shellcheck disable=SC2086
-    if $FTPRIMS run $run \
+    if $QREPRO run $run \
         --breakdown --physical \
         --out "$outfile"; then
         ok "$outfile"
@@ -69,9 +69,9 @@ declare -a PHYS_VARIANTS=(
 )
 
 for run in "${PHYS_VARIANTS[@]}"; do
-    echo "=> $FTPRIMS run $run --physical --breakdown"
+    echo "=> $QREPRO run $run --physical --breakdown"
     # shellcheck disable=SC2086
-    if $FTPRIMS run $run --physical --breakdown; then
+    if $QREPRO run $run --physical --breakdown; then
         ok "done"
     else
         fail "run $run"
@@ -95,7 +95,7 @@ declare -a VERIFIES=(
 
 for v in "${VERIFIES[@]}"; do
     # shellcheck disable=SC2086
-    if ! $FTPRIMS verify $v; then
+    if ! $QREPRO verify $v; then
         fail "verify $v"
     fi
 done
@@ -118,7 +118,7 @@ for ex in "${EXPORTS[@]}"; do
 
     # Numeric export
     # shellcheck disable=SC2086
-    if $FTPRIMS export-qref $ex \
+    if $QREPRO export-qref $ex \
         --out "${QREF_NUM_DIR}/qref_${slug}.yaml"; then
         ok "numeric: qref_${slug}.yaml"
     else
@@ -128,7 +128,7 @@ for ex in "${EXPORTS[@]}"; do
     # Symbolic export + consistency check (informational — divergence is
     # expected since symbolic formulas are textbook-level approximations).
     # shellcheck disable=SC2086
-    if $FTPRIMS export-qref $ex \
+    if $QREPRO export-qref $ex \
         --symbolic --check \
         --out "${QREF_SYM_DIR}/qref_${slug}_symbolic.yaml"; then
         ok "symbolic: qref_${slug}_symbolic.yaml"
@@ -141,13 +141,13 @@ done
 # Bartiq compile (one example)
 section "BARTIQ COMPILE"
 
-if $FTPRIMS bartiq "${QREF_SYM_DIR}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
+if $QREPRO bartiq "${QREF_SYM_DIR}/qref_qft_n=32_variant=textbook_symbolic.yaml" -a n=32; then
     ok "bartiq QFT"
 else
     fail "bartiq QFT"
 fi
 
-if $FTPRIMS bartiq "${QREF_SYM_DIR}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
+if $QREPRO bartiq "${QREF_SYM_DIR}/qref_arithmetic_n=16_op=add_symbolic.yaml" -a n=16; then
     ok "bartiq arithmetic/add"
 else
     fail "bartiq arithmetic/add"
@@ -171,14 +171,14 @@ $PYTHON experiments/landscape.py && ok "landscape" || fail "landscape"
 # Published-estimate reproductions
 section "REFERENCE REPRODUCTIONS"
 
-$FTPRIMS reproduce beverland     && ok "reproduce beverland"     || fail "reproduce beverland"
-$FTPRIMS reproduce ge19          && ok "reproduce ge19"          || fail "reproduce ge19"
-$FTPRIMS reproduce decomposition && ok "reproduce decomposition" || fail "reproduce decomposition"
+$QREPRO reproduce beverland     && ok "reproduce beverland"     || fail "reproduce beverland"
+$QREPRO reproduce ge19          && ok "reproduce ge19"          || fail "reproduce ge19"
+$QREPRO reproduce decomposition && ok "reproduce decomposition" || fail "reproduce decomposition"
 
 # Config dump (sanity)
 section "CONFIG"
 
-if $FTPRIMS dump-config --out "${CONFIGS_DIR}/default_config.yaml"; then
+if $QREPRO dump-config --out "${CONFIGS_DIR}/default_config.yaml"; then
     ok "default_config.yaml"
 else
     fail "default_config.yaml"

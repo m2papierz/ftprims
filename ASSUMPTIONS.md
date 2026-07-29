@@ -1,6 +1,6 @@
 # Assumptions, sources and conventions
 
-Single source of truth for every constant, parameter, and convention `ftprims` relies on. Every number quoted in this file is computed live by [`notebooks/reference_reproductions.ipynb`](notebooks/reference_reproductions.ipynb) and asserted in `tests/test_references_*.py`. This file explains; the notebook computes.
+Single source of truth for every constant, parameter, and convention `qrepro` relies on. Every number quoted in this file is computed live by [`notebooks/reference_reproductions.ipynb`](notebooks/reference_reproductions.ipynb) and asserted in `tests/test_references_*.py`. This file explains; the notebook computes.
 
 Line numbers refer to each paper's arXiv LaTeX source (`arxiv.org/e-print/<id>`).
 
@@ -115,7 +115,7 @@ Parameters the source papers do not fix. None should be quoted without its value
 
 **Error budget.** GE19 L1086 defines its "retry risk" ε as an upper bound on *"the overall probability of errors occurring"*. Qualtran documents error_budget` as *"the acceptable chance of an error occurring at any point"*. Same quantity, two names — so GE19's published ε = 31% (Table 3) is used directly. No proxy is required.
 
-**Runtime: per run vs expected.** `ftprims` emits a **per-run** duration; it has no retry model. GE19 Table 2 columns are *Expected runtime* / *Expected volume*; Table 3 columns are *per run*. GE19 L1096 gives the conversion: *"The `t/(1−ε)` factor is the expected runtime."* The two tables therefore agree exactly:
+**Runtime: per run vs expected.** `qrepro` emits a **per-run** duration; it has no retry model. GE19 Table 2 columns are *Expected runtime* / *Expected volume*; Table 3 columns are *per run*. GE19 L1096 gives the conversion: *"The `t/(1−ε)` factor is the expected runtime."* The two tables therefore agree exactly:
 
 ```
 5.1 hr / (1 − 0.31) = 7.39 hr = 0.308 day  →  Table 2's 0.31 day   ✓
@@ -129,7 +129,7 @@ Compare per-run to Table 3 and converted-expected to Table 2; never across.
 - `per_run` — GE19 as-is; G2025 ÷ 9.2.
 - `expected` — GE19 ÷ (1 − 0.31); G2025 as-is.
 
-**Magic-state counting.** Costs are aggregated as `n_ccz` = And + Toffoli + CSwap (`GateCounts.total_t_and_ccz_count`), never from `and_bloq` alone: each of the three is one CCZ, and `ModExp` puts `n_e·n` of them in `cswap`. The aggregation is called with `ts_per_rotation=0` so rotations stay out of the raw-T total — `ftprims` synthesises them separately at the configured ε and would otherwise double-count them.
+**Magic-state counting.** Costs are aggregated as `n_ccz` = And + Toffoli + CSwap (`GateCounts.total_t_and_ccz_count`), never from `and_bloq` alone: each of the three is one CCZ, and `ModExp` puts `n_e·n` of them in `cswap`. The aggregation is called with `ts_per_rotation=0` so rotations stay out of the raw-T total — `qrepro` synthesises them separately at the configured ε and would otherwise double-count them.
 
 **T-count metrics.** `t_count_direct` = raw T + 4×`n_ccz`. `t_count_ftqc` adds rotation synthesis at the configured ε. Rotation *counts* are ε-independent; T-equivalent *ratios* are not.
 
@@ -153,7 +153,7 @@ Qualtran ships the Beverland model, so this validates wiring, not independent co
 
 ### GE19 logical
 
-| quantity | ftprims | GE19 | dev |
+| quantity | qrepro | GE19 | dev |
 |---|---|---|---|
 | logical qubits | 6189 | 6189 (formula) | input, not a reproduction |
 | Toffoli | 2.624e9 | 2.7e9 (Table 1) | −2.9% |
@@ -172,7 +172,7 @@ They differ by the `n_e·n = 8,388,608` CSwaps, i.e. 0.0049%. `n_ccz` is the aut
 
 Grid search for both rows, `error_budget=0.31`, nf = 1 and 28.
 
-| row | metric | ftprims | GE19 | dev |
+| row | metric | qrepro | GE19 | dev |
 |---|---|---|---|---|
 | 1 factory | qubits | 17.97 M | 16 M (Tbl 2) | **+12.3%** |
 | 1 factory | runtime, per run | 127.88 hr | 144 hr (Tbl 2, *expected*) | −11.2% ⚠️ |

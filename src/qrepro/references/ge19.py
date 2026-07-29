@@ -6,20 +6,20 @@ layer to reproduce Table 2/3's rows plus sensitivity sweeps. Inputs and
 conventions: ASSUMPTIONS.md §2/§3.
 
 ``ModExp`` is GE19's reference construction; the windowed one is reproduced in
-``ftprims.references.ge19_windowed``.
+``qrepro.references.ge19_windowed``.
 """
 
 from __future__ import annotations
 
 import attrs
 
-from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
-from ftprims.algorithms.factoring import make_shor_modexp, modexp_logical_costs
-from ftprims.physical import estimate_physical_grid_search
-from ftprims.references._base import ReproductionRow
-from ftprims.references.values import (
+from qrepro.algorithms._base import LogicalCosts, PhysicalCosts
+from qrepro.algorithms.factoring import make_shor_modexp, modexp_logical_costs
+from qrepro.physical import estimate_physical_grid_search
+from qrepro.references._base import ReproductionRow
+from qrepro.references.values import (
     GE19,
-    GE19_FTPRIMS,
+    GE19_QREPRO,
     MODEXP_COEFFICIENT_SIZES,
     ge19_logical_qubits,
     ge19_toffoli_count,
@@ -79,9 +79,9 @@ def reproduce_ge19_physical() -> GE19PhysicalReproduction:
     Both rows use the same grid search; only ``n_factories`` differs.
     """
     logical = ge19_formula_logical_costs()
-    eb = GE19_FTPRIMS["error_budget"]
-    n_one = GE19_FTPRIMS["one_factory_n_factories"]
-    n_par = GE19_FTPRIMS["parallel_n_factories"]
+    eb = GE19_QREPRO["error_budget"]
+    n_one = GE19_QREPRO["one_factory_n_factories"]
+    n_par = GE19_QREPRO["parallel_n_factories"]
 
     def _grid(n_factories: int, error_budget: float):
         return estimate_physical_grid_search(
@@ -101,10 +101,10 @@ def reproduce_ge19_physical() -> GE19PhysicalReproduction:
         parallel=_grid(n_par, eb),
         sweep=tuple(
             (budget, _grid(n_one, budget), _grid(n_par, budget))
-            for budget in GE19_FTPRIMS["error_budget_sweep"]
+            for budget in GE19_QREPRO["error_budget_sweep"]
         ),
         factory_sweep=tuple(
-            (nf, _grid(nf, eb)) for nf in GE19_FTPRIMS["factory_count_sweep"]
+            (nf, _grid(nf, eb)) for nf in GE19_QREPRO["factory_count_sweep"]
         ),
         one_factory_target_qubits_M=one_row["qubits_M"],
         one_factory_target_runtime_hr_expected=one_row["runtime_days"] * 24,
@@ -164,7 +164,7 @@ class GE19LogicalReproduction:
 class GE19PhysicalReproduction:
     """GE19 physical rows (1-factory and parallel) plus sensitivity sweeps.
 
-    ftprims emits a per-run duration, so ``*_per_run`` targets come from GE19
+    qrepro emits a per-run duration, so ``*_per_run`` targets come from GE19
     Table 3 and ``*_expected`` from Table 2 (ASSUMPTIONS.md §3).
     """
 

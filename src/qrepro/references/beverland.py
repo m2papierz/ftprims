@@ -1,6 +1,6 @@
 """Beverland et al. reproduction (arXiv:2211.07629).
 
-Calls ``beverland_et_al_model`` directly rather than the ftprims auto-distance
+Calls ``beverland_et_al_model`` directly rather than the qrepro auto-distance
 search. Qualtran ships the Beverland model, so near-exact agreement with the
 targets in ``values.py`` checks the wiring, not independent convergence.
 """
@@ -12,8 +12,8 @@ from qualtran.resource_counting import GateCounts
 from qualtran.surface_code import AlgorithmSummary, QECScheme, beverland_et_al_model
 from qualtran.surface_code.rotation_cost_model import BeverlandEtAlRotationCost
 
-from ftprims.references._base import ReproductionRow
-from ftprims.references.values import BEVERLAND
+from qrepro.references._base import ReproductionRow
+from qrepro.references.values import BEVERLAND
 
 
 @attrs.define(frozen=True)

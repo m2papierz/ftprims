@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pytest
 
-from ftprims.references import reproduce_beverland
-from ftprims.references.values import BEVERLAND_TOL
+from qrepro.references import reproduce_beverland
+from qrepro.references.values import BEVERLAND_TOL
 
 _INSTANCES = list(reproduce_beverland().instances)
 _IDS = [inst.name for inst in _INSTANCES]

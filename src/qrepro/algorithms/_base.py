@@ -99,7 +99,7 @@ class VerificationResult:
 
 @runtime_checkable
 class Benchmark(Protocol):
-    """The interface every ftprims primitive exposes."""
+    """The interface every qrepro primitive exposes."""
 
     name: str
 

@@ -1,7 +1,7 @@
 """Logical-cost extraction from Qualtran's ``QECGatesCost``.
 
 Raw-T and CCZ counts stay separated; the FTQC T-count adds rotation synthesis
-at the Ross-Selinger cost. Physical estimation lives in ``ftprims.physical``.
+at the Ross-Selinger cost. Physical estimation lives in ``qrepro.physical``.
 """
 
 from __future__ import annotations
@@ -20,8 +20,8 @@ from qualtran.resource_counting.generalizers import (
     ignore_split_join,
 )
 
-from ftprims.algorithms._base import LogicalCosts
-from ftprims.config import DEFAULT_CONFIG
+from qrepro.algorithms._base import LogicalCosts
+from qrepro.config import DEFAULT_CONFIG
 
 
 def rotation_synthesis_t_cost(epsilon: float) -> int:

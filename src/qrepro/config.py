@@ -1,4 +1,4 @@
-"""Centralised configuration for ftprims."""
+"""Centralised configuration for qrepro."""
 
 from __future__ import annotations
 
@@ -33,7 +33,7 @@ class QREFConfig:
 
 
 @attrs.define
-class FTPrimsConfig:
+class QreproConfig:
     """Top-level configuration bundle."""
 
     surface_code: SurfaceCodeConfig = attrs.Factory(SurfaceCodeConfig)
@@ -43,7 +43,7 @@ class FTPrimsConfig:
         return attrs.asdict(self)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> FTPrimsConfig:
+    def from_dict(cls, d: dict[str, Any]) -> QreproConfig:
         sc = d.get("surface_code", {})
         qr = d.get("qref", {})
         return cls(
@@ -52,11 +52,11 @@ class FTPrimsConfig:
         )
 
     @classmethod
-    def load(cls, path: str | Path) -> FTPrimsConfig:
+    def load(cls, path: str | Path) -> QreproConfig:
         with open(path) as f:
             raw = yaml.safe_load(f)
         return cls.from_dict(raw or {})
 
 
 #: Used whenever no explicit config is passed.
-DEFAULT_CONFIG = FTPrimsConfig()
+DEFAULT_CONFIG = QreproConfig()

@@ -11,10 +11,10 @@ from __future__ import annotations
 
 import attrs
 
-from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
-from ftprims.physical import estimate_physical_grid_search
-from ftprims.references._base import ReproductionRow
-from ftprims.references.values import G2025, G2025_FTPRIMS, GE19
+from qrepro.algorithms._base import LogicalCosts, PhysicalCosts
+from qrepro.physical import estimate_physical_grid_search
+from qrepro.references._base import ReproductionRow
+from qrepro.references.values import G2025, G2025_QREPRO, GE19
 
 _FACTORY_COUNTS = (1, 16, 28)
 
@@ -45,7 +45,7 @@ def reproduce_2019_to_2025(convention: str = "per_run") -> DecompositionReproduc
     g2025_logical = LogicalCosts.from_magic_state_count(
         g2025_toffolis, logical_qubits=G2025["logical_qubits"]
     )
-    error_budget = G2025_FTPRIMS["error_budget"]
+    error_budget = G2025_QREPRO["error_budget"]
 
     rows = tuple(
         DecompositionRow(

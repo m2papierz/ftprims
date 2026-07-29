@@ -16,9 +16,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from _style import FIG_DUAL, PALETTE, apply_theme, light_grid, savefig
-from ftprims.physical import estimate_physical_grid_search
-from ftprims.references.ge19 import ge19_formula_logical_costs
-from ftprims.references.values import GE19
+from qrepro.physical import estimate_physical_grid_search
+from qrepro.references.ge19 import ge19_formula_logical_costs
+from qrepro.references.values import GE19
 
 ERROR_BUDGETS = [0.1, 0.2, 0.31, 0.4, 0.5]
 FACTORY_COUNTS = [1, 2, 4, 8, 14, 16, 20, 28, 32]

@@ -16,8 +16,8 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 
 from _style import FIG_DUAL, PALETTE, apply_theme, light_grid, savefig
-from ftprims.algorithms import registry
-from ftprims.resource import rotation_synthesis_t_cost
+from qrepro.algorithms import registry
+from qrepro.resource import rotation_synthesis_t_cost
 
 EPSILONS = [1e-3, 1e-6, 1e-8, 1e-10, 1e-12, 1e-15]
 BITSIZES = [8, 16, 32, 64, 128]

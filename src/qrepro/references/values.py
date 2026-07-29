@@ -149,7 +149,7 @@ GE19 = dict(
 
 # Reproduction inputs. error_budget and n_factories are GE19-published values
 # rather than free choices (ASSUMPTIONS.md §2/§3).
-GE19_FTPRIMS = dict(
+GE19_QREPRO = dict(
     error_budget=0.31,  # Table 3 retry risk
     error_budget_sweep=(0.1, 0.31, 0.33, 0.5),
     one_factory_n_factories=1,  # Table 2 "1 CCZ"
@@ -159,7 +159,7 @@ GE19_FTPRIMS = dict(
 
 # Measured against qualtran 0.7.0. At nf=28 the search selects d1=15, d2=27,
 # which is GE19 Table 3's factory.
-GE19_FTPRIMS_ACHIEVED = dict(
+GE19_QREPRO_ACHIEVED = dict(
     one_factory=dict(
         n_factories=1,
         qubits_M=17.970,
@@ -278,7 +278,7 @@ G2025 = dict(
 )
 
 # Measured against qualtran 0.7.0 at error_budget=0.31, per Toffoli convention.
-G2025_FTPRIMS = dict(
+G2025_QREPRO = dict(
     error_budget=0.31,
     per_run=dict(
         ge19_1f_qubits_M=17.9702,
