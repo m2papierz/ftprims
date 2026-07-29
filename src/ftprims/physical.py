@@ -1,13 +1,9 @@
-"""Surface-code physical resource estimation layer.
+"""Surface-code physical resource estimation.
 
-Constructs ``PhysicalCostModel`` instances from a declarative
-``PhysicalModelSpec`` and sweeps code distance to find the minimum
-that satisfies the error budget.
-
-Supported configurations:
-    profiles:    gidney_fowler, beverland
-    data_blocks: simple, compact, fast
-    factories:   ccz2t, fifteen_to_one
+Builds ``PhysicalCostModel`` instances from a :class:`PhysicalModelSpec` and
+sweeps code distance for the minimum that meets the error budget. Supported:
+profiles ``gidney_fowler`` / ``beverland``, data blocks ``simple`` / ``compact``
+/ ``fast``, factories ``ccz2t`` / ``fifteen_to_one``.
 """
 
 from __future__ import annotations
@@ -37,12 +33,10 @@ _MAX_AUTO_DISTANCE = 99
 
 @attrs.define(frozen=True)
 class PhysicalModelSpec:
-    """Declarative specification for a surface-code physical model.
+    """Surface-code model configuration.
 
-    Provides named presets via *profile* while allowing per-parameter
-    overrides. The ``data_d`` field pins the code distance; when
-    ``None`` the estimator auto-searches for the minimum feasible
-    distance.
+    *profile* names a preset; the remaining fields override it. ``data_d`` pins
+    the code distance, or ``None`` to auto-search the minimum feasible one.
     """
 
     profile: str = "gidney_fowler"
@@ -76,10 +70,7 @@ def make_physical_params(
     physical_error: float | None = None,
     cycle_time_us: float | None = None,
 ) -> PhysicalParameters:
-    """Return physical parameters for the named profile.
-
-    Explicit *physical_error* or *cycle_time_us* override the preset.
-    """
+    """Physical parameters for *profile*, with per-field overrides."""
     if profile == "gidney_fowler":
         base = PhysicalParameters.make_gidney_fowler()
     elif profile == "beverland":
@@ -121,10 +112,10 @@ def make_factory(
 ) -> CCZ2TFactory | FifteenToOne:
     """Construct a magic-state factory of the requested kind.
 
-    ``data_d`` applies to ``fifteen_to_one`` only: the CCZ2T factory's
-    distances are independent of the data-block distance. With ``l1_d`` /
-    ``l2_d`` unset this returns Qualtran's default (15, 31); use
-    :func:`estimate_physical` to search them.
+    ``data_d`` applies to ``fifteen_to_one`` only; the CCZ2T factory's
+    distillation distances are independent of the data-block distance. Unset
+    ``l1_d`` / ``l2_d`` gives Qualtran's default (15, 31); :func:`estimate_physical`
+    searches them instead.
     """
     if kind == "ccz2t":
         if l1_d is not None and l2_d is not None:
@@ -142,10 +133,10 @@ def make_model(
     l1_d: int | None = None,
     l2_d: int | None = None,
 ) -> PhysicalCostModel:
-    """Assemble a ``PhysicalCostModel`` from a spec at a given distance.
+    """Assemble a ``PhysicalCostModel`` from *spec* at code distance *data_d*.
 
-    Explicit *l1_d* / *l2_d* override ``spec.factory_l1_d`` / ``spec.factory_l2_d``
-    (used by the distillation-distance search in :func:`estimate_physical`).
+    *l1_d* / *l2_d* override ``spec.factory_l1_d`` / ``spec.factory_l2_d``, as
+    the distillation-distance search in :func:`_evaluate` does.
     """
     return PhysicalCostModel(
         qec_scheme=make_qec_scheme(spec.profile),
@@ -170,7 +161,7 @@ def _algo_summary_from_logical(logical: LogicalCosts) -> AlgorithmSummary:
         n_algo_qubits=logical.logical_qubits_estimate,
         n_logical_gates=GateCounts(
             t=logical.raw_t,
-            and_bloq=logical.and_count,
+            and_bloq=logical.magic_state_count,
             rotation=logical.rotation_count,
         ),
     )
@@ -183,20 +174,9 @@ def estimate_physical(
 ) -> PhysicalCosts:
     """Estimate physical costs for a surface-code deployment.
 
-    Parameters
-    ----------
-    logical:
-        Logical-level resource counts.
-    spec:
-        Physical model configuration. Uses default Gidney-Fowler
-        preset when ``None``.
-
-    Returns
-    -------
-    PhysicalCosts
-        Always includes ``failure_prob`` and ``budget_satisfied``.
-        When auto-search cannot meet the error budget, returns the
-        best result at d=99 with ``budget_satisfied=False``.
+    *spec* defaults to the Gidney-Fowler preset. The result always carries
+    ``failure_prob`` and ``budget_satisfied``; when the auto-search cannot meet
+    the budget it returns the d=99 result with ``budget_satisfied=False``.
     """
     spec = spec or PhysicalModelSpec()
     summary = _algo_summary_from_logical(logical)
@@ -204,7 +184,7 @@ def estimate_physical(
     if spec.data_d is not None:
         return _evaluate(spec, summary, spec.data_d)
 
-    # Auto-search: sweep odd distances until error ≤ budget.
+    # Sweep odd distances until failure_prob <= budget.
     best: PhysicalCosts | None = None
     for d in range(3, _MAX_AUTO_DISTANCE + 1, 2):
         candidate = _evaluate(spec, summary, d)
@@ -254,10 +234,10 @@ def _evaluate(
     summary: AlgorithmSummary,
     data_d: int,
 ) -> PhysicalCosts:
-    """Run the physical model at *data_d*, searching CCZ2T distillation distances.
+    """Run the model at *data_d*, searching CCZ2T distillation distances.
 
-    Returns the smallest-footprint factory meeting the error budget, falling
-    back to the lowest achieved failure probability when none does.
+    Returns the smallest-footprint factory meeting the error budget, or the
+    lowest achieved failure probability when none does.
     """
     pinned = spec.factory_l1_d is not None and spec.factory_l2_d is not None
     if spec.factory != "ccz2t" or pinned:
@@ -296,38 +276,30 @@ def estimate_physical_grid_search(
     """Estimate physical costs via Qualtran's CCZ2T grid search.
 
     Wraps ``get_ccz2t_costs_from_grid_search`` with
-    ``iter_ccz2t_factories(n_factories=N)``, which co-optimises *N* parallel
-    magic-state factories against the data block — the configuration GE19
-    uses for its parallel headline (the single-``CCZ2TFactory``
-    :func:`estimate_physical` reproduces only the distillation-limited
-    1-factory row).
-
-    The Toffoli/And count is taken from ``logical.and_count`` (with any
-    ``raw_t`` folded in via the shared ``raw_t + 4·and`` convention, i.e. as
-    an equivalent Toffoli budget), and the result is normalised back into the
-    frozen ``PhysicalCosts`` record so it always carries ``failure_prob`` and
-    ``budget_satisfied``.
+    ``iter_ccz2t_factories(n_factories=N)``, co-optimising *n_factories*
+    parallel factories against the data block. :func:`estimate_physical` uses a
+    single ``CCZ2TFactory`` and so covers only the distillation-limited row.
 
     Parameters
     ----------
     logical:
-        Logical-level resource counts. ``and_count`` (Toffoli) drives the
-        gate budget; ``logical_qubits_estimate`` sets ``n_algo_qubits``.
+        ``magic_state_count`` drives the gate budget; ``logical_qubits_estimate`` sets
+        ``n_algo_qubits``.
     n_factories:
-        Number of parallel magic-state factories to co-optimise.
+        Parallel magic-state factories to co-optimise.
     error_budget:
-        Total logical error budget for the grid search.
+        Total logical error budget for the search.
     phys_err:
-        Physical gate error rate (GE19: 1e-3).
+        Physical gate error rate.
     cycle_time_us:
-        Surface-code cycle time in microseconds (GE19: 1.0).
+        Surface-code cycle time in microseconds.
     """
     if n_factories < 1:
         raise ValueError(f"n_factories must be ≥ 1, got {n_factories}")
 
-    # Fold raw T into an equivalent Toffoli budget (4 T = 1 Toffoli) so the
-    # single-number grid search sees the full non-Clifford cost.
-    toffoli_equiv = logical.and_count + logical.raw_t // 4
+    # 4 T = 1 Toffoli, so the single-number grid search sees the full
+    # non-Clifford cost.
+    toffoli_equiv = logical.magic_state_count + logical.raw_t // 4
     summary, factory, data_block = get_ccz2t_costs_from_grid_search(
         n_logical_gates=GateCounts(toffoli=toffoli_equiv),
         n_algo_qubits=int(logical.logical_qubits_estimate),

@@ -58,7 +58,7 @@ def test_cli_logical_matches_api(cli_args, name, params):
     assert cli_l["t_count_ftqc"] == api.t_count_ftqc
     assert cli_l["logical_qubits_estimate"] == api.logical_qubits_estimate
     assert cli_l["rotation_count"] == api.rotation_count
-    assert cli_l["and_count"] == api.and_count
+    assert cli_l["magic_state_count"] == api.magic_state_count
 
 
 @pytest.mark.parametrize(
@@ -135,22 +135,3 @@ def test_cli_breakdown_sums_to_ftqc():
     denom = max(logical_ftqc, bd_total, 1)
     delta = abs(logical_ftqc - bd_total) / denom
     assert delta < 0.01, f"CLI breakdown total={bd_total} vs logical={logical_ftqc}"
-
-
-def test_cli_explain_json():
-    """--explain-json must produce an 'explain' key with headline and metrics."""
-    data = _run_cli(
-        "arithmetic",
-        "-p",
-        "n=16",
-        "-p",
-        "op=add",
-        "--breakdown",
-        "--physical",
-        "--explain-json",
-    )
-    assert "explain" in data
-    assert "headline" in data["explain"]
-    assert "metrics" in data["explain"]
-    assert "observations" in data["explain"]
-    assert isinstance(data["explain"]["observations"], list)

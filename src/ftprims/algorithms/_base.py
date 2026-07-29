@@ -1,4 +1,4 @@
-"""Benchmark protocol - thin contract every primitive implements."""
+"""The ``Benchmark`` protocol, its result records, and the primitive registry."""
 
 from __future__ import annotations
 
@@ -24,55 +24,49 @@ class BreakdownItem:
 class LogicalCosts:
     """Logical-level resource counts.
 
-    ``and_count`` holds the aggregate magic-state count (ASSUMPTIONS.md §3);
-    the field name predates that aggregation.
+    ``magic_state_count`` is the aggregate ``And + Toffoli + CSwap`` count, one
+    CCZ each (ASSUMPTIONS.md §3).
     """
 
     logical_qubits_estimate: int
     t_count_direct: int
     t_count_ftqc: int
     raw_t: int = 0
-    and_count: int = 0
+    magic_state_count: int = 0
     clifford_count: int = 0
     rotation_count: int = 0
     rotation_synthesis_epsilon: float | None = None
     breakdown: tuple[BreakdownItem, ...] = ()
 
     @classmethod
-    def from_toffoli_count(
+    def from_magic_state_count(
         cls,
-        toffoli_count: float,
+        magic_states: float,
         *,
         logical_qubits: int,
         raw_t: int = 0,
     ) -> "LogicalCosts":
         """Build a ``LogicalCosts`` from a magic-state count and a qubit count.
 
-        For large factoring workloads the logical-qubit count comes from the
-        paper's analytic formula (e.g. GE19 ``3n``), NOT from a traced
-        ``QubitCount`` (which is O(gates) and hangs at n≥128). This constructor
-        assembles the frozen record directly so the physical layer can be fed a
-        paper's closed-form count.
-
         Parameters
         ----------
-        toffoli_count:
-            Aggregate magic-state count (ASSUMPTIONS.md §3), stored in
-            ``and_count`` so the shared ``raw_t + 4*and`` T-equivalent
-            convention applies.
+        magic_states:
+            Aggregate magic-state count (ASSUMPTIONS.md §3); the shared
+            ``raw_t + 4*magic_states`` T-equivalent convention applies.
         logical_qubits:
-            Logical-qubit count, from the paper's analytic formula.
+            Logical-qubit count, from a paper's analytic formula rather than a
+            traced ``QubitCount``, which is O(gates) and hangs at n >= 128.
         raw_t:
-            Any additional raw T-gates (default 0; factoring is Toffoli-dominated).
+            Additional raw T-gates; factoring is Toffoli-dominated.
         """
-        and_count = int(toffoli_count)
-        t_direct = raw_t + 4 * and_count
+        magic_state_count = int(magic_states)
+        t_direct = raw_t + 4 * magic_state_count
         return cls(
             logical_qubits_estimate=int(logical_qubits),
             t_count_direct=t_direct,
-            t_count_ftqc=t_direct,  # no arbitrary rotations in modular exponentiation
+            t_count_ftqc=t_direct,  # modular exponentiation has no arbitrary rotations
             raw_t=raw_t,
-            and_count=and_count,
+            magic_state_count=magic_state_count,
             rotation_count=0,
         )
 
@@ -105,7 +99,7 @@ class VerificationResult:
 
 @runtime_checkable
 class Benchmark(Protocol):
-    """Every ftprims primitive exposes this interface."""
+    """The interface every ftprims primitive exposes."""
 
     name: str
 
@@ -121,11 +115,11 @@ class Benchmark(Protocol):
     def verify_small(self, **params: Any) -> VerificationResult: ...
 
 
-# Simple name => instance registry filled by each module on import
+# name -> instance, filled by each algorithm module on import
 registry: dict[str, Benchmark] = {}
 
 
 def register(cls: type[Benchmark]) -> type[Benchmark]:
-    """Add given benchmark class to the global registry."""
+    """Instantiate *cls* into the registry under its ``name``."""
     registry[cls.name] = cls()
     return cls
