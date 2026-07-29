@@ -1,8 +1,7 @@
-"""QROM benchmark: basic QROM and SelectSwapQROM.
+"""QROM benchmark: ``QROM`` and ``SelectSwapQROM``.
 
-Quantum Read-Only Memory is a central primitive in FTQC algorithms:
-state preparation, SELECT oracles, quantum chemistry. SelectSwapQROM
-trades ancilla qubits for fewer T-gates, controlled by ``log_block_sizes``.
+``SelectSwapQROM`` trades ancilla qubits for fewer T-gates; the trade-off point
+is set by ``log_block_sizes``.
 """
 
 from __future__ import annotations
@@ -46,21 +45,19 @@ def _build_qrom(
     variant: str = "basic",
     log_block_sizes: int | None = None,
 ) -> Bloq:
-    """Construct a QROM or SelectSwapQROM bloq.
+    """Construct a ``QROM`` or ``SelectSwapQROM`` bloq.
 
     Parameters
     ----------
     data_size:
-        Number of entries in the lookup table.  Must be ≥ 2 and a
-        power of two.
+        Number of table entries; must be a power of two and >= 2.
     target_bitsize:
         Bit-width of each output value.
     variant:
-        ``"basic"`` for QROM or ``"selectswap"`` for SelectSwapQROM.
+        ``"basic"`` or ``"selectswap"``.
     log_block_sizes:
-        Block-size exponent for SelectSwapQROM (controls the T-gates
-        vs ancilla trade-off). Must be in [1, log2(data_size) - 1].
-        Ignored for basic QROM.
+        Block-size exponent for ``selectswap``, in [1, log2(data_size) - 1].
+        Ignored for ``basic``.
     """
     if variant not in _VARIANTS:
         raise ValueError(
@@ -73,7 +70,6 @@ def _build_qrom(
     if target_bitsize < 1:
         raise ValueError(f"target_bitsize must be ≥ 1, got {target_bitsize}")
 
-    # Validate log_block_sizes range for SelectSwapQROM.
     if variant == "selectswap" and log_block_sizes is not None:
         sel_bits = int(math.log2(data_size))
         if not (1 <= log_block_sizes < sel_bits):
@@ -95,7 +91,7 @@ def _build_qrom(
 
 @register
 class QROMBenchmark(Benchmark):
-    """Benchmark wrapper for Quantum Read-Only Memory."""
+    """Quantum read-only memory."""
 
     name = "qrom"
 
@@ -164,7 +160,6 @@ class QROMBenchmark(Benchmark):
                     detail=f"call_classically(sel={sel}) failed: {exc}",
                 )
 
-            # Map positional results to register names for robustness.
             reg_names = [reg.name for reg in bloq.signature]
             result_dict = dict(zip(reg_names, result))
             actual = int(result_dict["target0_"])

@@ -1,7 +1,7 @@
-"""Arithmetic benchmark: Add, OutOfPlaceAdder, LessThanEqual, Product, ModAdd.
+"""Arithmetic benchmark: ``Add``, ``OutOfPlaceAdder``, ``LessThanEqual``,
+``Product``, ``ModAdd``.
 
-Fault-tolerant building blocks for integer arithmetic.  Each operation
-maps to a single Qualtran bloq; verification uses ``call_classically``
+Each op maps to one Qualtran bloq; verification runs ``call_classically``
 against Python integer arithmetic.
 """
 
@@ -33,18 +33,11 @@ _VERIFY_RNG_SEED = 0
 
 
 def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
-    """Construct the requested arithmetic bloq.
+    """Construct the arithmetic bloq for *op* at bitsize *n*.
 
-    Parameters
-    ----------
-    n:
-        Bitsize of the operands.
-    op:
-        One of ``add``, ``add_oop``, ``leq``, ``mul``, ``modadd``.
-    mod:
-        Modulus for ``modadd`` (must be < 2**n). Defaults to the
-        largest prime below 2**n for n ≤ 32; for larger n uses
-        2**n - 1 to avoid expensive primality search.
+    *mod* applies to ``modadd`` and must be < 2**n. It defaults to the largest
+    prime below 2**n for n <= 32, and to 2**n - 1 above that, where the
+    brute-force primality search gets expensive.
     """
     if op not in _OPS:
         raise ValueError(f"Unknown op {op!r}; choose from {sorted(_OPS)}")
@@ -84,7 +77,7 @@ _ClassicalOracle = Callable[[int, int, int], tuple[dict[str, int], dict[str, int
 
 
 def _oracle_add(n: int) -> _ClassicalOracle:
-    """Add: b <= a+b mod 2**n."""
+    """Add: b -> a + b mod 2**n."""
     mask = (1 << n) - 1
 
     def check(a: int, b: int, _mod: int) -> tuple[dict, dict]:
@@ -96,7 +89,7 @@ def _oracle_add(n: int) -> _ClassicalOracle:
 
 
 def _oracle_add_oop(n: int) -> _ClassicalOracle:
-    """OutOfPlaceAdder: c <= a+b (output register is wider)."""
+    """OutOfPlaceAdder: c -> a + b, into a wider output register."""
 
     def check(a: int, b: int, _mod: int) -> tuple[dict, dict]:
         inputs = dict(a=a, b=b, c=0)
@@ -107,7 +100,7 @@ def _oracle_add_oop(n: int) -> _ClassicalOracle:
 
 
 def _oracle_leq(_n: int) -> _ClassicalOracle:
-    """LessThanEqual: target <= (x ≤ y)."""
+    """LessThanEqual: target -> (x <= y)."""
 
     def check(x: int, y: int, _mod: int) -> tuple[dict, dict]:
         inputs = dict(x=x, y=y, target=0)
@@ -118,7 +111,7 @@ def _oracle_leq(_n: int) -> _ClassicalOracle:
 
 
 def _oracle_modadd(_n: int) -> _ClassicalOracle:
-    """ModAdd: y <= (x+y) mod p."""
+    """ModAdd: y -> (x + y) mod p."""
 
     def check(x: int, y: int, mod: int) -> tuple[dict, dict]:
         inputs = dict(x=x, y=y)
@@ -163,7 +156,6 @@ def _verify_classically(
                 detail=f"{op}(n={n}): call_classically({inputs}) failed: {exc}",
             )
 
-        # Map positional results back to register names.
         reg_names = [reg.name for reg in bloq.signature]
         actual = dict(zip(reg_names, result))
 
@@ -182,7 +174,7 @@ def _verify_classically(
 
 @register
 class ArithmeticBenchmark(Benchmark):
-    """Benchmark wrapper for FT arithmetic primitives."""
+    """Integer arithmetic primitives."""
 
     name = "arithmetic"
 
@@ -217,7 +209,7 @@ class ArithmeticBenchmark(Benchmark):
         op: str = "add",
         mod: int | None = None,
     ) -> VerificationResult:
-        """Verify arithmetic op via ``call_classically`` on random inputs."""
+        """Verify *op* via ``call_classically`` on random inputs."""
         n = int(n)
         if n > _MAX_VERIFY_N:
             return VerificationResult(
@@ -240,7 +232,7 @@ class ArithmeticBenchmark(Benchmark):
 
         bloq = self.build_bloq(n=n, op=op, mod=mod)
 
-        # Resolve the modulus that _build_arithmetic actually used.
+        # The modulus _build_arithmetic actually resolved.
         effective_mod = getattr(bloq, "mod", 0)
         oracle = oracle_factory(n)
         return _verify_classically(bloq, oracle, n, effective_mod, op=op)

@@ -1,12 +1,8 @@
-"""QPE benchmark: Textbook Quantum Phase Estimation.
+"""QPE benchmark: ``TextbookQPE`` over a single-qubit unitary.
 
-The default unitary is ``ZPowGate(exponent=2*phi)``. The benchmark
-layer accepts any single-qubit ``Bloq`` as ``unitary``, but the CLI
-preset uses ZPowGate.
-
-Verification enforces exact phases so that QPE output is deterministic
-and the check is bit-exact.  Circuit construction tries progressively
-deeper decompositions to work around Qualtran register-name collisions.
+``build_bloq`` accepts any single-qubit ``Bloq`` as ``unitary``; the CLI preset
+is ``ZPowGate(exponent=2*phi)``. Verification accepts exact phases only, so the
+measured register is deterministic.
 """
 
 from __future__ import annotations
@@ -36,19 +32,11 @@ _MAX_DECOMPOSE_DEPTH = 4
 
 
 def _build_qpe(*, m: int, phi: float, unitary: Bloq | None = None) -> Bloq:
-    """Construct a TextbookQPE for a single-qubit phase gate.
+    """Construct a ``TextbookQPE`` with *m* precision bits.
 
-    Parameters
-    ----------
-    m:
-        Number of precision bits.
-    phi:
-        Phase of the toy unitary (0 ≤ phi < 1).  The unitary is
-        ``ZPowGate(exponent=2·phi)`` whose eigenstate |1⟩ has
-        eigenvalue e^(2πi·phi).
-    unitary:
-        Optional custom unitary bloq.  When ``None`` (the default),
-        uses ``ZPowGate(exponent=2·phi)``.
+    *phi* is the phase in [0, 1) of the default unitary
+    ``ZPowGate(exponent=2·phi)``, whose eigenstate |1> has eigenvalue
+    e^(2πi·phi). *unitary* overrides that default.
     """
     if m < 1:
         raise ValueError(f"Precision bits must be ≥ 1, got {m}")
@@ -82,13 +70,12 @@ def _total_qubits_from_signature(bloq: Bloq) -> int:
 
 
 def _build_cirq_circuit(bloq: Bloq) -> tuple[cirq.Circuit, dict] | None:
-    """Try to build a Cirq circuit with register map at increasing depth.
+    """Build a Cirq circuit and register map, trying increasing depth.
 
-    Some Qualtran versions raise ``KeyError`` on register name
-    collisions at shallow decomposition depth.  Trying deeper levels
-    resolves sub-bloqs into primitives that don't collide.
-
-    Returns ``(circuit, quregs)`` or ``None`` if all depths fail.
+    Qualtran raises ``KeyError`` on register-name collisions at shallow
+    decomposition depth; deeper levels resolve sub-bloqs into primitives that
+    do not collide. Returns ``(circuit, quregs)``, or ``None`` if every depth
+    fails.
     """
     cbloq = bloq
     for _ in range(_MAX_DECOMPOSE_DEPTH):
@@ -102,16 +89,15 @@ def _build_cirq_circuit(bloq: Bloq) -> tuple[cirq.Circuit, dict] | None:
 
 
 def _verify_via_tensor(bloq: Bloq, *, m: int, phi: float) -> VerificationResult:
-    """Fallback QPE verification using tensor_contract().
+    """Verify QPE via ``tensor_contract()`` when circuit construction fails.
 
-    Qualtran's tensor_contract() may return a multi-dimensional
-    tensor for bloqs with multiple named registers, so we derive
-    the expected dimension from the signature and reshape.
+    ``tensor_contract()`` returns a multi-dimensional tensor for bloqs with
+    several named registers, so the dimension is derived from the signature and
+    the tensor reshaped.
     """
     n_qubits = _total_qubits_from_signature(bloq)
     dim = 1 << n_qubits
 
-    # Try tensor_contract at several decomposition levels.
     U = None
     source = bloq
     for _ in range(_MAX_DECOMPOSE_DEPTH + 1):
@@ -146,7 +132,7 @@ def _verify_via_tensor(bloq: Bloq, *, m: int, phi: float) -> VerificationResult:
             ),
         )
 
-    # Initial state: QPE register |0…0⟩, target |1⟩ (LSBs).
+    # Initial state: QPE register |0...0>, target |1> (LSBs).
     initial = np.zeros(dim, dtype=complex)
     initial[1] = 1.0
 
@@ -180,7 +166,7 @@ def _verify_via_tensor(bloq: Bloq, *, m: int, phi: float) -> VerificationResult:
 
 @register
 class QPEBenchmark(Benchmark):
-    """Benchmark wrapper for Textbook Quantum Phase Estimation."""
+    """Textbook Quantum Phase Estimation."""
 
     name = "qpe"
 
@@ -205,15 +191,11 @@ class QPEBenchmark(Benchmark):
         )
 
     def verify_small(self, *, m: int = 4, phi: float = 0.25) -> VerificationResult:
-        """Verify QPE via Cirq simulation on the eigenstate |1⟩.
+        """Verify QPE by Cirq simulation on the eigenstate |1>.
 
-        Only exact phases (multiples of 1/2^m) are accepted for
-        deterministic verification.  For inexact phases, use the
-        benchmark ``run`` command instead.
-
-        Tries progressively deeper decompositions to work around
-        Qualtran register-name collisions in ``to_cirq_circuit_and_quregs()``.
-        Falls back to ``tensor_contract()`` if circuit construction fails.
+        Skips unless *phi* is an exact multiple of 1/2^m, which is what makes
+        the measured register deterministic. Falls back to ``tensor_contract()``
+        when Cirq circuit construction fails at every decomposition depth.
         """
         m = int(m)
         phi = float(phi)
@@ -235,7 +217,6 @@ class QPEBenchmark(Benchmark):
 
         bloq = self.build_bloq(m=m, phi=phi)
 
-        # Try building a Cirq circuit at progressively deeper decomposition.
         result = _build_cirq_circuit(bloq)
         if result is None:
             return _verify_via_tensor(bloq, m=m, phi=phi)
@@ -244,12 +225,11 @@ class QPEBenchmark(Benchmark):
         available = list(quregs.keys())
 
         if "qpe_reg" not in quregs:
-            # Fall back to tensor if register layout is unexpected.
             return _verify_via_tensor(bloq, m=m, phi=phi)
 
         qpe_qubits = list(quregs["qpe_reg"].flat)
 
-        # Target register: all named registers that are not qpe_reg.
+        # Every named register that is not qpe_reg is target.
         target_names = [k for k in available if k != "qpe_reg"]
         if not target_names:
             return _verify_via_tensor(bloq, m=m, phi=phi)
@@ -258,13 +238,11 @@ class QPEBenchmark(Benchmark):
         for name in target_names:
             target_qubits.extend(list(quregs[name].flat))
 
-        # Build qubit order: qpe_reg first, then target.
-        # Top bits of state vector index = QPE register, bottom = target.
+        # Top bits of the state-vector index are the QPE register.
         qubit_order = qpe_qubits + target_qubits
         n_target = len(target_qubits)
 
-        # Initial state: QPE register |0…0⟩, target |1⟩ (eigenstate of ZPowGate).
-        initial_state = 1  # |0…0⟩|1⟩
+        initial_state = 1  # |0...0>|1>, the ZPowGate eigenstate
 
         sim = cirq.Simulator()
         result = sim.simulate(

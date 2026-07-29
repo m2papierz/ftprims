@@ -1,8 +1,4 @@
-"""QFT benchmark of Textbook and Approximate variants.
-
-Wraps ``qualtran.bloqs.qft`` to expose a uniform ``Benchmark`` interface
-with logical resource estimation and small-scale Cirq verification.
-"""
+"""QFT benchmark: ``QFTTextBook`` and ``ApproximateQFT``."""
 
 from __future__ import annotations
 
@@ -26,16 +22,10 @@ _MAX_VERIFY_N = 10
 
 
 def _build_qft(*, n: int, variant: str = "textbook") -> Bloq:
-    """Construct a QFT bloq for the requested variant.
+    """Construct a QFT bloq on *n* qubits.
 
-    Parameters
-    ----------
-    n:
-        Number of qubits (bitsize).
-    variant:
-        ``"textbook"`` for the exact QFT or ``"approx"`` for the
-        approximate version that truncates small-angle rotations
-        (phase_bitsize = n // 2).
+    *variant* is ``"textbook"`` for the exact QFT or ``"approx"`` for the
+    variant that truncates small-angle rotations (``phase_bitsize = n // 2``).
     """
     if variant not in _VARIANTS:
         raise ValueError(
@@ -54,7 +44,7 @@ def _build_qft(*, n: int, variant: str = "textbook") -> Bloq:
 
 @register
 class QFTBenchmark(Benchmark):
-    """Benchmark wrapper for the Quantum Fourier Transform."""
+    """Quantum Fourier Transform."""
 
     name = "qft"
 
@@ -80,9 +70,9 @@ class QFTBenchmark(Benchmark):
     ) -> VerificationResult:
         """Verify the QFT unitary via ``tensor_contract`` for small *n*.
 
-        For textbook QFT the unitary is compared against the analytic DFT
-        matrix (up to global phase).  For approximate QFT only unitarity is
-        checked — the circuit intentionally drops small-angle rotations.
+        Textbook: compared against the analytic DFT matrix up to global phase.
+        Approximate: unitarity only, since the circuit drops small-angle
+        rotations by construction.
         """
         n = int(n)
         if n > _MAX_VERIFY_N:
@@ -100,8 +90,7 @@ class QFTBenchmark(Benchmark):
                 status="fail", detail=f"tensor_contract failed: {exc}"
             )
 
-        # ApproximateQFT uses ancilla qubits, so the matrix dimension can
-        # exceed 2**n. Derive it from the actual tensor.
+        # ApproximateQFT uses ancillae, so the dimension can exceed 2**n.
         dim = U.shape[0]
 
         if not np.allclose(U @ U.conj().T, np.eye(dim), atol=1e-6):
@@ -113,7 +102,7 @@ class QFTBenchmark(Benchmark):
             jk = np.outer(np.arange(N), np.arange(N))
             F = omega**jk / np.sqrt(N)
 
-            # Global-phase-invariant overlap: |tr(F† U)| / N ≈ 1.
+            # Global-phase-invariant overlap: |tr(F† U)| / N == 1.
             overlap = np.abs(np.trace(F.conj().T @ U)) / N
             if not np.isclose(overlap, 1.0, atol=1e-4):
                 return VerificationResult(

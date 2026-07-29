@@ -11,19 +11,16 @@ import yaml
 
 @attrs.define
 class SurfaceCodeConfig:
-    """User-tunable parameters for surface-code physical estimation."""
+    """Tunable parameters for surface-code physical estimation.
 
-    # PhysicalParameters - None means "use QEC profile preset"
+    ``None`` on *physical_error* / *cycle_time_us* takes the QEC profile
+    preset; ``None`` on *data_d* auto-searches the minimum feasible distance.
+    """
+
     physical_error: float | None = None
     cycle_time_us: float | None = None
-
-    # Code distance - None => auto-search for minimum feasible distance
     data_d: int | None = None
-
-    # Error budget for the whole algorithm
     error_budget: float = 1e-3
-
-    # Rotation synthesis precision
     rotation_synthesis_epsilon: float | None = 1e-10
 
 
@@ -54,12 +51,6 @@ class FTPrimsConfig:
             qref=QREFConfig(**qr),
         )
 
-    def save(self, path: str | Path) -> None:
-        p = Path(path)
-        p.parent.mkdir(parents=True, exist_ok=True)
-        with open(p, "w") as f:
-            yaml.safe_dump(self.to_dict(), f, sort_keys=False)
-
     @classmethod
     def load(cls, path: str | Path) -> FTPrimsConfig:
         with open(path) as f:
@@ -67,5 +58,5 @@ class FTPrimsConfig:
         return cls.from_dict(raw or {})
 
 
-# Module-level default used when no explicit config is passed.
+#: Used whenever no explicit config is passed.
 DEFAULT_CONFIG = FTPrimsConfig()
