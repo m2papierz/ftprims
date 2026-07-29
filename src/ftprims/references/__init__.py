@@ -1,56 +1,28 @@
 """Reproductions of published FTQC resource estimates.
 
-Each reproduction computes its comparison rows once (``reproduce_*``) and returns
-a frozen result container; tests assert them against the paper targets in
-``values.py``, the notebooks render them, and the CLI prints them.
+One module per reproduction -- ``beverland``, ``ge19``, ``ge19_windowed``,
+``decomposition`` -- each owning the frozen result containers next to the
+``reproduce_*()`` function that builds them. ``values`` holds every published
+constant; ``_base`` holds the shared ``ReproductionRow``.
 
-This subpackage may import from the core modules (``physical``, ``algorithms``,
-``resource``); the core modules never import from ``ftprims.references``.
+This subpackage may import from the core modules; they never import from it.
 """
 
 from __future__ import annotations
 
-from ftprims.references._base import (
-    BeverlandInstance,
-    BeverlandReproduction,
-    DecompositionReproduction,
-    DecompositionRow,
-    GE19LogicalReproduction,
-    GE19PhysicalReproduction,
-    ReproductionRow,
-)
-from ftprims.references.beverland import (
-    BeverlandReferenceCosts,
-    beverland_reference_costs,
-    reproduce_beverland,
-)
+from ftprims.references.beverland import reproduce_beverland
 from ftprims.references.decomposition import reproduce_2019_to_2025
-from ftprims.references.ge19 import (
-    ge19_formula_logical_costs,
-    reproduce_ge19_logical,
-    reproduce_ge19_physical,
+from ftprims.references.ge19 import reproduce_ge19_logical, reproduce_ge19_physical
+from ftprims.references.ge19_windowed import (
+    reproduce_ge19_windowed,
+    windowed_total_ccz,
 )
-from ftprims.references.values import BEVERLAND, G2025, GE19
 
 __all__ = [
-    # Paper constant tables
-    "BEVERLAND",
-    "GE19",
-    "G2025",
-    # Reproduction entry points
     "reproduce_beverland",
     "reproduce_ge19_logical",
     "reproduce_ge19_physical",
+    "reproduce_ge19_windowed",
     "reproduce_2019_to_2025",
-    "ge19_formula_logical_costs",
-    "beverland_reference_costs",
-    # Result containers
-    "ReproductionRow",
-    "BeverlandInstance",
-    "BeverlandReproduction",
-    "BeverlandReferenceCosts",
-    "GE19LogicalReproduction",
-    "GE19PhysicalReproduction",
-    "DecompositionRow",
-    "DecompositionReproduction",
+    "windowed_total_ccz",
 ]

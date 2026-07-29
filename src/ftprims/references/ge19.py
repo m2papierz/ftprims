@@ -1,20 +1,22 @@
-"""GE19 reproduction (arXiv:1905.09749v3): factor 2048-bit RSA.
+"""GE19 reproduction (arXiv:1905.09749v3): factoring a 2048-bit RSA modulus.
 
 Two stages: reconcile GE19's closed form against Qualtran's ``ModExp``
-call-graph count (the ~64x divergence), then feed the GE19 *formula* count
-through the surface-code layer to reproduce Table 2/3's rows plus sensitivity
-sweeps. Inputs and conventions: ASSUMPTIONS.md §2/§3.
+call-graph count, then feed the GE19 formula count through the surface-code
+layer to reproduce Table 2/3's rows plus sensitivity sweeps. Inputs and
+conventions: ASSUMPTIONS.md §2/§3.
+
+``ModExp`` is GE19's reference construction; the windowed one is reproduced in
+``ftprims.references.ge19_windowed``.
 """
 
 from __future__ import annotations
 
-from ftprims.algorithms._base import LogicalCosts
+import attrs
+
+from ftprims.algorithms._base import LogicalCosts, PhysicalCosts
 from ftprims.algorithms.factoring import make_shor_modexp, modexp_logical_costs
 from ftprims.physical import estimate_physical_grid_search
-from ftprims.references._base import (
-    GE19LogicalReproduction,
-    GE19PhysicalReproduction,
-)
+from ftprims.references._base import ReproductionRow
 from ftprims.references.values import (
     GE19,
     GE19_FTPRIMS,
@@ -26,8 +28,8 @@ from ftprims.references.values import (
 
 
 def ge19_formula_logical_costs() -> LogicalCosts:
-    """LogicalCosts carrying GE19's formula Toffoli count and qubit count."""
-    return LogicalCosts.from_toffoli_count(
+    """GE19's formula Toffoli and logical-qubit counts as ``LogicalCosts``."""
+    return LogicalCosts.from_magic_state_count(
         GE19["toffoli_count"], logical_qubits=GE19["logical_qubits"]
     )
 
@@ -35,11 +37,13 @@ def ge19_formula_logical_costs() -> LogicalCosts:
 def modexp_coefficient_series(
     sizes: tuple[int, ...] = MODEXP_COEFFICIENT_SIZES,
 ) -> tuple[tuple[int, float], ...]:
-    """Measured ``n_ccz / (ne·n²)`` for ``ModExp`` at each ``n`` in *sizes*."""
+    """Measured ``n_ccz / (ne·n²)`` for ``ModExp`` at each n in *sizes*."""
     return tuple(
         (
             n,
-            modexp_logical_costs(make_shor_modexp(n), logical_qubits=3 * n).and_count
+            modexp_logical_costs(
+                make_shor_modexp(n), logical_qubits=3 * n
+            ).magic_state_count
             / ((2 * n) * n**2),
         )
         for n in sizes
@@ -49,22 +53,22 @@ def modexp_coefficient_series(
 def reproduce_ge19_logical() -> GE19LogicalReproduction:
     """Reconcile GE19's closed form with Qualtran's ModExp call-graph count.
 
-    ``QubitCount`` / ``AlgorithmSummary.from_bloq`` / ``decompose_bloq`` are
-    never called on ``ModExp`` -- they walk the wires and hang at n≥128 -- so
-    the qubit count comes from GE19's abstract formula.
+    ``QubitCount`` / ``AlgorithmSummary.from_bloq`` / ``decompose_bloq`` walk
+    the wires and hang at n >= 128, so the qubit count comes from GE19's
+    abstract formula instead.
     """
     n = GE19["n"]
     modexp_logical = modexp_logical_costs(
         make_shor_modexp(n), logical_qubits=GE19["logical_qubits"]
     )
-    ne = 2 * n  # Shor original
+    ne = 2 * n  # Shor, not Ekera-Hastad
     return GE19LogicalReproduction(
         n=n,
         logical_qubits_formula=ge19_logical_qubits(n),
         toffoli_formula=ge19_toffoli_count(n),
-        modexp_ccz_count=modexp_logical.and_count,
+        modexp_ccz_count=modexp_logical.magic_state_count,
         half_reference_fitted=modexp_toffoli_reference(n, ne) / 2,
-        divergence_ratio=modexp_logical.and_count / GE19["toffoli_count"],
+        divergence_ratio=modexp_logical.magic_state_count / GE19["toffoli_count"],
         coefficient_series=modexp_coefficient_series(),
     )
 
@@ -109,3 +113,117 @@ def reproduce_ge19_physical() -> GE19PhysicalReproduction:
         parallel_target_runtime_hr_per_run=table3["runtime_hr_per_run"],
         retry_risk=table3["retry"],
     )
+
+
+@attrs.define(frozen=True)
+class GE19LogicalReproduction:
+    """GE19 logical-count reconciliation: closed form vs ModExp call graph.
+
+    ``half_reference_fitted`` is half GE19 §2.2 L522's ``20·ne·n²``, a fitted
+    coefficient and therefore a regression pin rather than evidence.
+    ``coefficient_series`` carries the non-circular attribution
+    (ASSUMPTIONS.md §3).
+    """
+
+    n: int
+    logical_qubits_formula: float
+    toffoli_formula: float
+    modexp_ccz_count: int
+    half_reference_fitted: float
+    divergence_ratio: float
+    coefficient_series: tuple[tuple[int, float], ...] = ()
+    ge19_reference_coefficient: float = 20.0
+
+    @property
+    def measured_coefficient(self) -> float:
+        """Measured ``n_ccz / (ne·n²)`` at ``ne = 2n``."""
+        ne = 2 * self.n
+        return self.modexp_ccz_count / (ne * self.n**2)
+
+    @property
+    def rows(self) -> tuple[ReproductionRow, ...]:
+        return (
+            ReproductionRow.make(
+                "logical qubits", "formula", self.logical_qubits_formula
+            ),
+            ReproductionRow.make("Toffoli", "GE19 formula", self.toffoli_formula),
+            ReproductionRow.make(
+                "Toffoli", "Qualtran ModExp", float(self.modexp_ccz_count)
+            ),
+            ReproductionRow.make("ModExp / formula", "ratio", self.divergence_ratio),
+            ReproductionRow.make(
+                "measured coefficient",
+                "n_ccz/(ne·n²)",
+                self.measured_coefficient,
+                self.ge19_reference_coefficient,
+            ),
+        )
+
+
+@attrs.define(frozen=True)
+class GE19PhysicalReproduction:
+    """GE19 physical rows (1-factory and parallel) plus sensitivity sweeps.
+
+    ftprims emits a per-run duration, so ``*_per_run`` targets come from GE19
+    Table 3 and ``*_expected`` from Table 2 (ASSUMPTIONS.md §3).
+    """
+
+    error_budget: float
+    one_factory: PhysicalCosts
+    parallel: PhysicalCosts
+    sweep: tuple[tuple[float, PhysicalCosts, PhysicalCosts], ...]
+    factory_sweep: tuple[tuple[int, PhysicalCosts], ...]
+    one_factory_target_qubits_M: float
+    one_factory_target_runtime_hr_expected: float
+    parallel_target_qubits_M: float
+    parallel_target_runtime_hr_expected: float
+    parallel_target_runtime_hr_per_run: float
+    retry_risk: float
+
+    @property
+    def one_factory_runtime_hr(self) -> float:
+        return self.one_factory.wall_time_us / 3.6e9
+
+    @property
+    def parallel_runtime_hr(self) -> float:
+        return self.parallel.wall_time_us / 3.6e9
+
+    @property
+    def parallel_runtime_hr_expected(self) -> float:
+        """The per-run duration converted to GE19's expected convention."""
+        return self.parallel_runtime_hr / (1.0 - self.retry_risk)
+
+    @property
+    def rows(self) -> tuple[ReproductionRow, ...]:
+        return (
+            ReproductionRow.make(
+                "1 factory",
+                "physical_qubits_M",
+                self.one_factory.physical_qubits / 1e6,
+                self.one_factory_target_qubits_M,
+            ),
+            ReproductionRow.make(
+                "1 factory",
+                "runtime_hr/run [vs T2exp]",
+                self.one_factory_runtime_hr,
+                self.one_factory_target_runtime_hr_expected,
+            ),
+            ReproductionRow.make(
+                "parallel",
+                "physical_qubits_M",
+                self.parallel.physical_qubits / 1e6,
+                self.parallel_target_qubits_M,
+            ),
+            ReproductionRow.make(
+                "parallel",
+                "runtime_hr/run [vs T3]",
+                self.parallel_runtime_hr,
+                self.parallel_target_runtime_hr_per_run,
+            ),
+            ReproductionRow.make(
+                "parallel",
+                "runtime_hr exp [vs T2]",
+                self.parallel_runtime_hr_expected,
+                self.parallel_target_runtime_hr_expected,
+            ),
+        )
