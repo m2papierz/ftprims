@@ -73,7 +73,7 @@ Key options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget` (def
 
 ```bash
 make run-all      # full pipeline: benchmarks, verification, QREF export, sweeps, reproductions
-make test         # 167 integration and reference-reproduction tests
+make test         # integration and reference-reproduction tests
 make verify       # small-scale Cirq simulation checks
 make sweeps       # assumption sweeps + resource landscape => CSV + PNG
 make fmt          # ruff import-sort + format
@@ -105,7 +105,7 @@ src/qrepro/
 └── cli.py           # click command group
 experiments/         # parameter sweeps and the landscape chart
 notebooks/           # reproduction and pipeline notebooks
-tests/               # 167 tests, pinned regression literals
+tests/               # integration and reference tests, pinned regression literals
 ```
 
 ## Reproductions
@@ -157,7 +157,7 @@ Every published constant, free parameter, convention, tolerance and known diverg
 - **No retry model** — the physical layer emits a per-run duration only.
 - **No yoked codes or magic-state cultivation** — G2025's sub-million estimate is not representable in a CCZ2T model, so it is decomposed rather than reproduced.
 - **Logical qubits for factoring are analytic, not traced** — `QubitCount` is O(gates) and does not terminate at n=2048.
-- **The coset superposition is not simulated** — the padding arithmetic that lets a plain non-modular `Add` do modular addition is verified on the costed configuration at toy sizes, over every representative; what stays analytic is that a register holding a multiple of the modulus is indistinguishable from `|0⟩`. All correctness checks are permutation-level.
+- **The coset representation is not simulated** — the windowed construction's correctness is asserted at toy sizes on the exact `ModAdd` variant, not on the padded configuration the reported counts are built from. All correctness checks are permutation-level and cannot detect a relative-phase error.
 
 ## License
 
