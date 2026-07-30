@@ -208,9 +208,6 @@ GE19_WINDOWED = dict(
 
 # Measured against qualtran==0.7.0 from the built WindowedModExp bloq, at the
 # per-n cost argmin over w_e, w_m in [3,8], w_m <= w_e.
-# `slack_lookup_excess` is the per-multiply-add gap between the lookup additions
-# the call graph charges and the ones the decomposition emits, which the input
-# slack bits open when they cross a w_m boundary.
 GE19_WINDOWED_ACHIEVED = dict(
     n1024=dict(
         window=(5, 4),
@@ -219,7 +216,6 @@ GE19_WINDOWED_ACHIEVED = dict(
         lookup_ccz=83_880_720,
         unlookup_ccz=7_236_768,
         bridged_ccz=440_784_960,
-        slack_lookup_excess=1,
     ),
     n2048=dict(
         window=(5, 5),
@@ -228,7 +224,6 @@ GE19_WINDOWED_ACHIEVED = dict(
         lookup_ccz=526_708_140,
         unlookup_ccz=30_922_200,
         bridged_ccz=2_711_876_940,
-        slack_lookup_excess=0,
     ),
     n3072=dict(
         window=(5, 5),
@@ -237,7 +232,6 @@ GE19_WINDOWED_ACHIEVED = dict(
         lookup_ccz=1_175_970_432,
         unlookup_ccz=69_039_360,
         bridged_ccz=8_415_897_984,
-        slack_lookup_excess=0,
     ),
     window_argmin_n2048=(5, 5),
     runway_uplift_n2048=0.0353,  # count uplift from runways on at GE19's g_sep
