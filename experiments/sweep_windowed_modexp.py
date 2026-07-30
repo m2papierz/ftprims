@@ -1,12 +1,8 @@
-"""Sweep GE19's windowed modexp over the window grid and over modulus size.
+"""Sweep GE19's windowed modexp over the window grid and over modulus size
+(ASSUMPTIONS.md §6). CSV panels: ``window_grid``, ``falloff``, ``default_window``.
 
-CSV panels: ``window_grid`` (whole grid at n=2048), ``falloff``
-(``n_ccz/(n_e·n²)`` at the per-n cost argmin), ``default_window`` (argmin vs
-GE19 L690's published ``(5, 5)``, per tabulated n). Conventions: ASSUMPTIONS.md §6.
-
-Outputs:
-  results/sweeps/sweep_windowed_modexp.csv
-  results/charts/windowed_modexp_sweep.png
+Writes results/sweeps/sweep_windowed_modexp.csv and
+results/charts/windowed_modexp_sweep.png.
 """
 
 from __future__ import annotations

@@ -1,12 +1,8 @@
-"""Physical resource landscape: all primitives x variants x params x configs.
+"""Beverland-style log-log plot of physical_qubits vs wall_time, with convex
+hulls per primitive variant, over every primitive x variant x param x config.
 
-Beverland-style log-log plot of physical_qubits vs wall_time with convex
-hulls per primitive variant.
-
-Outputs:
-  results/charts/landscape.png
-  landscape.png             (repo-root copy embedded by README)
-
+Writes results/charts/landscape.png and a repo-root landscape.png copy for the
+README.
 """
 
 from __future__ import annotations

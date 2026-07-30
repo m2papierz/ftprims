@@ -1,11 +1,8 @@
-"""Sweep the GE19 physical reproduction over error_budget x n_factories.
+"""Sweep the GE19 physical reproduction over error_budget x n_factories, both
+GE19-published; deviations use matched conventions (ASSUMPTIONS.md §3).
 
-Both parameters are GE19-published (retry risk 0.31, 28 factories for the
-parallel row). Deviations use matched conventions: ASSUMPTIONS.md §3.
-
-Outputs:
-  results/sweeps/sweep_ge19_physical.csv
-  results/charts/ge19_physical_sweep.png
+Writes results/sweeps/sweep_ge19_physical.csv and
+results/charts/ge19_physical_sweep.png.
 """
 
 from __future__ import annotations

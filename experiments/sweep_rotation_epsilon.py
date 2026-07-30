@@ -1,11 +1,9 @@
-"""Sweep rotation-synthesis precision epsilon => QFT T-equivalent counts.
+"""Sweep rotation-synthesis epsilon against QFT T-equivalent counts; the
+approximate QFT has no arbitrary-angle rotations, so the textbook/approx ratio
+measures synthesis cost alone (ASSUMPTIONS.md §2).
 
-The approximate QFT has zero arbitrary-angle rotations, so the textbook/approx
-ratio measures synthesis cost alone. Sensitivity: ASSUMPTIONS.md §2.
-
-Outputs:
-  results/sweeps/sweep_rotation_epsilon.csv
-  results/charts/rotation_epsilon.png
+Writes results/sweeps/sweep_rotation_epsilon.csv and
+results/charts/rotation_epsilon.png.
 """
 
 from __future__ import annotations
