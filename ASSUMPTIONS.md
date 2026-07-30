@@ -210,7 +210,7 @@ against its published 20 M.
 - **No retry model** — the physical layer emits a per-run duration only (see §3).
 - **No yoked codes or magic-state cultivation** — G2025's published target is structurally out of reach; the gap is measured, not worked around.
 - **Logical qubits for factoring are analytic, not traced** — see §6.
-- **The coset representation is not simulated** — see §6.
+- **The coset superposition is not simulated** — the padding arithmetic is, on the costed configuration; what is left analytic is that a register holding `jN` is indistinguishable from `|0⟩`. See §6.
 
 ---
 
@@ -227,6 +227,8 @@ WindowedModExp             ceil(n_e/w_e) uncontrolled multiplications  (L590)
             ├── Add(QUInt(width))                  addition    (L593)
             └── QROAMClean(...).adjoint()          unlookup    (L595)
 ```
+
+**Where the coset representation comes from.** GE19 §2.4 L542 prices it, but the construction is Zalka's: [*Shor's algorithm with fewer (pure) qubits*](https://arxiv.org/abs/quant-ph/0601097) §4 (*Modular addition with equal "coset superpositions"*, L281)proposes representing `k mod N` as an equal superposition over the arithmetic sequence `jN + k`, so that a plain non-modular adder preserves the residue and the modular reduction never has to be made reversible. Both citations belong together — Qualtran's own (unmerged) coset bloq carries Zalka §4 and GE19 §2.4 side by side.
 
 ### Leaf costs — measured, not assumed
 
@@ -253,6 +255,16 @@ Two measured constraints on the lookup primitive: `QROM.adjoint()` does not use 
 | 3072 | (5,5) | 4.8305e9 | 74.2% | 24.3% | 1.4% | 0.488 | **0.850** |
 
 The window is the per-`n` cost minimum over `w_e, w_m ∈ [3,8]`, `w_m ≤ w_e`. At n=2048 and n=3072 that is GE19's own published `(5,5)`; at n=1024 it is `(5,4)`, which lands **further** from Table 1 than `(5,5)` would (0.665 vs 0.707): the selection is cost-driven, not target-driven. `sweep_windowed_modexp.py` writes the whole grid.
+
+**Why the sweep is a triangle.** `WINDOW_GRID` enforces `w_m ≤ w_e`, so it visits 21 of the 36 cells. The count factorises exactly as
+
+```
+2 · ceil(n_e/w_e) · ceil((n + g_pad + 2)/w_m) · C(w_e + w_m, width)
+```
+
+— one lookup addition per (exponent window × factor window × pass), each costing whatever a fused `w_e + w_m` address costs at that register width — verified exact against the call graph on all 36 cells at n = 1024/2048/3072. The pair therefore enters only through the sum `w_e + w_m` and the two ceilings, so swapping `w_e` and `w_m` is free apart from rounding and the triangle covers the square up to that rounding: the measured swap asymmetry is at most 0.45% / 0.18% / 0.04% at n = 1024/2048/3072. GE19's published `(5,5)` is on the diagonal, inside the triangle either way.
+
+The constraint costs one cell. At n=1024 the unconstrained argmin is `(4,5)` at **2.6576e8**, 0.073% below the swept argmin `(5,4)` at 2.6595e8 (÷ Table 1 0.664 vs 0.665); at n=2048 and n=3072 the unconstrained argmin is `(5,5)`, so the constraint changes nothing there. It is kept and the pinned counts stand; dropping it would move the n=1024 count by −0.073% and no other number in this file.
 
 **"Bridged"** doubles the adder term and *only* the adder term, converting Qualtran's Gidney temporary-AND adder ([arXiv:1709.06648](https://arxiv.org/abs/1709.06648), `N−1` ANDs) to GE19's Cuccaro convention (`2N` Toffolis, L520). It is reported alongside the unbridged figure and never folded into it. That one substitution moves n=2048 from 0.605 to **1.004 × Table 1**.
 
@@ -294,7 +306,7 @@ Each of these is a reading of the paper, not a transcription. All are consistent
 
 - **Carry runways (§2.6) are excluded from the count.** They cut addition *depth*, not magic-state count. `runway_sep` is a constructor parameter (default `None`) so the exclusion is auditable and reversible. Turning it on at GE19's `g_sep=1024` costs **+3.5%** here against **+1.6%** in GE19's own ancillary model: widening the register also widens the windowing over it (more lookup additions), which `anc:170` does not charge. The divergence is recorded rather than reconciled; runways are outside the reported counts either way.
 - **Nested vs single `ceil`.** `anc:171` applies one `ceil` over the whole `n_e·2·(n+g_pad+2)/(w_e·w_m)` product; the built bloq necessarily applies `ceil` at each nesting level, which is structurally what the construction does. Worth **+0.0 to +0.5%**.
-- **`input_slack_bits = 2`** from `anc:170`. The `+2` is not explained in the paper text. Setting it to 0 moves the count by **−0.37% / 0.00% / 0.00%** at n = 1024/2048/3072.
+- **`input_slack_bits = 2`** from `anc:170`. The `+2` is not explained in the paper text. Setting it to 0 moves the count by **−0.37% / 0.00% / 0.00%** at n = 1024/2048/3072. It is also the one place where the costed object and the built object diverge structurally: `WindowedMultiplyAdd.n_lookup_additions` charges `ceil((width+2)/w_m)` lookup additions while `n_factor_windows` — what `build_composite_bloq` emits — is `ceil(width/w_m)`. The two slack bits belong to no register, so the decomposition cannot represent them and refuses to run while they are set. **The divergence is kept and pinned, not reconciled**: `test_windowed_slack_bits_are_charged_but_never_built` asserts the excess at a toy size on both sides of a `w_m` boundary and that the decomposition fails closed, and `test_windowed_slack_lookup_excess_pinned` asserts it per n against `GE19_WINDOWED_ACHIEVED[...]["slack_lookup_excess"]` (**1 / 0 / 0** at n = 1024/2048/3072 — the excess exists only at n=1024, and is the whole of the −0.37% above).
 - **The GE19 ancillary-model literals** in `GE19_WINDOWED["anc_model_toffoli"]` are GE19's own `anc/estimate_costs.py` cost model — its pure Toffoli-count path only, physical layer stripped — evaluated at parameters matched to this construction (`g_exp = g_mul = 5`, `g_sep = 1024`, `g_pad` per n). They were transcribed by a scratchpad probe **not committed to this repo**, so unlike every other literal here they cannot be re-derived from this repository; that transcription was cross-checked against Table 1 (+5.3% / +2.0% / −12.9%) and against the paper's three closed forms. They therefore carry weaker provenance than the Table 1 literals and are asserted in a band (bridged ratio ∈ [0.94, 1.08]; achieved 1.047 / 0.985 / 0.976), not tightly. Table 1 is the authoritative comparison.
 
 ### Correctness
@@ -313,16 +325,37 @@ These are **classical-action checks through the decomposition** (`decompose_bloq
 permutation-level: they do not contract a state vector, so unlike `make verify`'s
 `tensor_contract` checks on the primitives they cannot detect a relative-phase error.
 
-The **coset representation itself is not simulated**: preparing `√(2^-g_pad) Σⱼ|jN+k⟩` has
-no Qualtran primitive, and the gate count does not depend on it (the bloq operates on a
-padded register with a plain `Add`, which is the coset trick's operational content). The
-coset row of the validation plan is therefore **asserted analytically, not simulated**.
+The **costed** configuration — `exact_modular=False` with `coset_padding > 0`, i.e. the
+plain non-modular `Add` the reproduced counts are built from — is asserted separately, and
+the two configurations divide as follows.
+
+**Simulated.** The padding *arithmetic*: `WindowedMultiplyAdd` at a toy size, through the
+real decomposition, over **every** value the padded register can hold at two moduli
+(N = 15 and 21, the second not of the form `2^k − 1`). Each residue therefore enters under
+every one of its representatives `x₀ + jN`, and the result is congruent to `y + x·k` mod N
+under all of them — the coset property — while the register value stays inside
+`[y, y + windows·N)`, so the padding demonstrably absorbed the accumulated multiples of N
+instead of the register wrapping. Removing the padding breaks exactly this: the same
+construction at `coset_padding=0` is wrong mod N for 25% / 23% of inputs at N = 15 / 21,
+and the padded build is right on every one of them, which is what identifies the padding
+as the mechanism rather than incidental extra width.
+
+**Not simulated.** The coset *superposition*: preparing `√(2^-g_pad) Σⱼ|jN+k⟩` has no
+Qualtran primitive, and the gate count does not depend on it. One concrete consequence is
+now measured rather than asserted — the two-pass source clear. The unmultiply pass drives
+the source to `x − y·k⁻¹`, which is zero mod N but a **non-zero multiple of N** in the
+register, because every lookup addition contributes a term already canonicalised into
+`[0, N)` and nothing ever takes the accumulated multiples back off. Only the superposition
+makes that indistinguishable from `|0⟩`, so `WindowedModMul` cannot `bb.free` its source in
+the costed configuration and the two-pass clear is asserted in the exact variant instead.
+That single property — that a register holding `jN` is indistinguishable from `|0⟩` — is
+the whole of what remains **asserted analytically, not simulated**.
 
 ### Tolerances — what each windowed test asserts
 
 Bands follow the repo convention: measure the achieved deviation, then set the band with
 headroom and name the cause. Literals live in `GE19_WINDOWED_TOL` / `GE19_WINDOWED_ACHIEVED`
-(`references/values.py`); 41 tests in `tests/test_references_ge19.py`.
+(`references/values.py`); 52 tests in `tests/test_references_ge19.py`.
 
 | test | assertion | band | achieved |
 |---|---|---|---|
@@ -341,15 +374,17 @@ headroom and name the cause. Literals live in `GE19_WINDOWED_TOL` / `GE19_WINDOW
 | `test_windowed_call_graph_stays_collapsed` | node count | `< 30` | **14** |
 | `test_windowed_is_far_cheaper_than_stock_modexp` | windowed × 50 < stock `ModExp` | exact | 105.1× |
 | `test_windowed_runway_exclusion_is_measurable` | uplift at GE19's `g_sep=1024` | `abs=0.002` | **+3.53%** |
+| `test_windowed_slack_bits_are_charged_but_never_built` | charged − built lookup additions at a toy size, either side of a `w_m` boundary; decomposition fails closed | exact | 1 / 0 |
+| `test_windowed_slack_lookup_excess_pinned` | charged − built lookup additions, per n | **exact integers** | **1** / 0 / 0 |
 | `test_windowed_*_classical_action` (4 tests) | exact residues through the real decomposition | exact | — |
+| `test_windowed_coset_multiply_add_is_correct_mod_n` | costed configuration ≡ `y + x·k` mod N over every representative; value stays in `[y, y+windows·N)` | exact | — |
+| `test_windowed_coset_padding_is_what_makes_a_plain_add_modular` | unpadded build wrong mod N somewhere, padded build right there | exact | 25% / 23% of inputs wrong unpadded |
+| `test_windowed_coset_source_clears_only_to_a_multiple_of_n` | unmultiply leaves a non-zero multiple of N; `WindowedModMul` refuses to free it | exact | — |
 | `test_windowed_modexp_rejects_bad_parameters` (4 cases) | fail-closed at the boundary | exact | — |
 
 ### Not addressed
 
-- **Logical qubits from the bloq.** The count still comes from GE19's analytic
-  `3n + 0.002·n·lg n`, as it does for `ModExp` — `QubitCount` is O(gates) and will not
-  terminate at n=2048. Deriving it from the bloq needs the lookup-output width and the
-  measurement-based unlookup's ancillae, and may not be reachable without also modelling
-  the semi-classical QFT's exponent recycling.
-- **Measurement depth** (`500n² + n²lg n`). `QECGatesCost` has no depth notion that maps
-  onto GE19's reaction-limited model.
+- **Logical qubits from the bloq.** The count still comes from GE19's analytic `3n + 0.002·n·lg n`, as it does for `ModExp` — `QubitCount` is O(gates) and will not terminate at n=2048. Deriving it from the bloq needs the lookup-output width and the measurement-based unlookup's ancillae, and may not be reachable without also modelling the semi-classical QFT's exponent recycling.
+- **Measurement depth** (`500n² + n²lg n`). `QECGatesCost` has no depth notion that maps onto GE19's reaction-limited model. Qualtran gained one on 2026-07-28: `qualtran.surface_code.flasq.MeasurementDepth` / `TotalMeasurementDepth`, a `CostKey` that upper-bounds what GE19 calls reaction depth as the longest weighted path through the circuit DAG. It is future work here, not a reproduction, for two reasons: it exists on Qualtran `main` only — no release tag through the pinned `v0.7.0` contains the `flasq`
+package — and it reaches that DAG by decomposing, which this construction's costing path deliberately withholds (every iteration collapses onto one symbolic node, and the decomposition refuses to run while `input_slack_bits` is set). Nothing here reproduces
+GE19's depth formula.

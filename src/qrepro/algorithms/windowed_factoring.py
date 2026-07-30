@@ -245,8 +245,20 @@ class WindowedMultiplyAdd(Bloq):
 
     @property
     def n_lookup_additions(self) -> int:
-        """``ceil(mul_in_bits / w_m)``: one lookup addition per factor window."""
+        """``ceil(mul_in_bits / w_m)``: lookup additions the call graph charges.
+
+        Exceeds :attr:`n_factor_windows` by one whenever the slack bits push
+        ``mul_in_bits`` past a multiple of ``w_m``. The excess is charged but
+        not built: the slack bits belong to no register, so the decomposition
+        cannot represent them and refuses to run while they are set. The
+        divergence is pinned rather than reconciled (ASSUMPTIONS.md §6).
+        """
         return math.ceil(self.mul_in_bits / self.mul_window)
+
+    @property
+    def n_factor_windows(self) -> int:
+        """``ceil(width / w_m)``: lookup additions the decomposition emits."""
+        return len(self._windows())
 
     def _lookup_addition(self, lookup_bitsize: int, table=None) -> LookupAddition:
         return LookupAddition(
@@ -278,19 +290,36 @@ class WindowedMultiplyAdd(Bloq):
             out.append((start, min(self.mul_window, self.width - start)))
         return out
 
+    def _window_term(self, x_i: int, k: int, start_bit: int) -> int:
+        """One window's contribution ``x_i · k · 2^start_bit``, canonicalised
+        into ``[0, N)`` (GE19 L667-670)."""
+        return (x_i * k * (1 << start_bit)) % self.mod
+
     def _table(self, start_bit: int, win_bits: int) -> tuple[int, ...]:
         """Fused-address table for the window at ``start_bit``.
 
         Address ``a`` splits as ``(e, x_i)`` with the exponent window in the
-        high ``w_e`` bits; the entry is ``x_i · multiplier^e · 2^start_bit``.
+        high ``w_e`` bits.
         """
         entries = []
         for a in range(1 << (self.exp_window + win_bits)):
             e, x_i = divmod(a, 1 << win_bits)
-            entries.append(
-                (x_i * self._multiplier_for(e) * (1 << start_bit)) % self.mod
-            )
+            entries.append(self._window_term(x_i, self._multiplier_for(e), start_bit))
         return tuple(entries)
+
+    def _accumulate(self, x: int, k: int) -> int:
+        """``x·k`` as the lookup additions build it up, window by window.
+
+        Congruent to ``x·k`` mod N but not reduced to it: every window
+        contributes its own canonicalised term, so the total lands somewhere in
+        ``[0, n_factor_windows·N)``. That is the coset representation's
+        operational content -- a plain, non-modular ``Add`` preserves the
+        residue and the padding absorbs the accumulated multiples of N.
+        """
+        return sum(
+            self._window_term((x >> start) & ((1 << win_bits) - 1), k, start)
+            for start, win_bits in self._windows()
+        )
 
     def build_composite_bloq(
         self, bb: BloqBuilder, addr: Soquet, x: Soquet, y: Soquet
@@ -334,11 +363,15 @@ class WindowedMultiplyAdd(Bloq):
     def on_classical_vals(self, addr: int, x: int, y: int) -> dict[str, int]:
         if isinstance(self.multiplier, sympy.Expr):
             raise ValueError(f"classical action of {self} needs a concrete multiplier")
-        modulus = self.mod if self.exact_modular else (1 << self.width)
+        k = self._multiplier_for(addr)
+        if self.exact_modular:
+            return {"addr": addr, "x": x, "y": (y + x * k) % self.mod}
+        # Coset regime: the register keeps a representative of y + x·k mod N,
+        # not the residue -- which one depends on how the windows split `x`.
         return {
             "addr": addr,
             "x": x,
-            "y": (y + x * self._multiplier_for(addr)) % modulus,
+            "y": (y + self._accumulate(x, k)) % (1 << self.width),
         }
 
 

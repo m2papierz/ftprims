@@ -157,7 +157,7 @@ Every published constant, free parameter, convention, tolerance and known diverg
 - **No retry model** — the physical layer emits a per-run duration only.
 - **No yoked codes or magic-state cultivation** — G2025's sub-million estimate is not representable in a CCZ2T model, so it is decomposed rather than reproduced.
 - **Logical qubits for factoring are analytic, not traced** — `QubitCount` is O(gates) and does not terminate at n=2048.
-- **The coset representation is not simulated** — the windowed construction's correctness is asserted through the exact non-padded variant, at permutation level.
+- **The coset superposition is not simulated** — the padding arithmetic that lets a plain non-modular `Add` do modular addition is verified on the costed configuration at toy sizes, over every representative; what stays analytic is that a register holding a multiple of the modulus is indistinguishable from `|0⟩`. All correctness checks are permutation-level.
 
 ## License
 
