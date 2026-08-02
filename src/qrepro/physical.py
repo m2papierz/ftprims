@@ -194,7 +194,7 @@ def estimate_physical(
 
     assert best is not None
     warnings.warn(
-        f"Auto-search exhausted (d ≤ {_MAX_AUTO_DISTANCE}) without meeting "
+        f"Auto-search exhausted (d <= {_MAX_AUTO_DISTANCE}) without meeting "
         f"error_budget={spec.error_budget:.2e}. Returning result at "
         f"d={_MAX_AUTO_DISTANCE} with budget_satisfied=False.",
         stacklevel=2,
@@ -280,22 +280,12 @@ def estimate_physical_grid_search(
     parallel factories against the data block. :func:`estimate_physical` uses a
     single ``CCZ2TFactory`` and so covers only the distillation-limited row.
 
-    Parameters
-    ----------
-    logical:
-        ``magic_state_count`` drives the gate budget; ``logical_qubits_estimate`` sets
-        ``n_algo_qubits``.
-    n_factories:
-        Parallel magic-state factories to co-optimise.
-    error_budget:
-        Total logical error budget for the search.
-    phys_err:
-        Physical gate error rate.
-    cycle_time_us:
-        Surface-code cycle time in microseconds.
+    ``logical.magic_state_count`` drives the gate budget and
+    ``logical.logical_qubits_estimate`` sets ``n_algo_qubits``. *phys_err* is the
+    physical gate error rate, *cycle_time_us* the surface-code cycle time.
     """
     if n_factories < 1:
-        raise ValueError(f"n_factories must be ≥ 1, got {n_factories}")
+        raise ValueError(f"n_factories must be >= 1, got {n_factories}")
 
     # 4 T = 1 Toffoli, so the single-number grid search sees the full
     # non-Clifford cost.

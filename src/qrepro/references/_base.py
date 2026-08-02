@@ -1,8 +1,5 @@
-"""The comparison-table row every reproduction exposes as ``.rows``.
-
-Tests assert the typed fields, the notebook renders them and the CLI prints
-them, so no reproduced number is computed in more than one place.
-"""
+"""The comparison-table row every reproduction exposes as ``.rows``, and the
+single place each reproduced number is computed."""
 
 from __future__ import annotations
 

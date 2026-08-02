@@ -37,24 +37,11 @@ def beverland_reference_costs(
 ) -> BeverlandReferenceCosts:
     """Evaluate Qualtran's Beverland model for one application instance.
 
-    ``code_distance`` is evaluated at *time_steps_for_code_distance*, the
-    paper's tabulated step count, not at the computed ``c_min``.
-
-    Parameters
-    ----------
-    n_algo_qubits:
-        Algorithm (logical) qubits.
-    gate_counts:
-        Kwargs for ``GateCounts``: ``t``, ``rotation``, ``toffoli``,
-        ``measurement``.
-    n_rotation_layers:
-        Rotation layers.
-    error_budget:
-        Total error budget for the instance.
-    time_steps_for_code_distance:
-        Time-step count at which to evaluate the code distance.
-    physical_error:
-        Physical error rate; arXiv:2211.07629 uses 1e-4.
+    *gate_counts* are kwargs for ``GateCounts`` (``t``, ``rotation``,
+    ``toffoli``, ``measurement``) and *physical_error* is 1e-4 throughout
+    arXiv:2211.07629. ``code_distance`` is evaluated at
+    *time_steps_for_code_distance*, the paper's tabulated step count, not at the
+    computed ``c_min``.
     """
     alg = AlgorithmSummary(
         n_algo_qubits=n_algo_qubits,

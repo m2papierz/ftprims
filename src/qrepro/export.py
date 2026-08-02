@@ -165,22 +165,9 @@ def build_qref_program(
 ) -> dict:
     """Create a QREF v1 program dict.
 
-    Parameters
-    ----------
-    name:
-        Routine name, e.g. ``"qft_textbook"``.
-    params:
-        Algorithm parameters, recorded as ``input_params``.
-    costs:
-        Logical-level resource counts; used in numeric mode only.
-    symbolic:
-        Emit the analytic expressions instead of concrete values.
-    children:
-        Child routines for hierarchical programs.
-    port_size:
-        Generate ``in``/``out`` ports of this size.
-    cfg:
-        QREF export configuration.
+    *params* is recorded as ``input_params``. *costs* is used in numeric mode
+    only; *symbolic* emits the analytic expressions instead. *port_size*
+    generates ``in``/``out`` ports of that size.
     """
     cfg = cfg or DEFAULT_CONFIG.qref
 

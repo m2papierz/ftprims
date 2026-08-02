@@ -70,7 +70,7 @@ def main() -> None:
     "--physical-error", type=float, default=None, help="Override physical error rate"
 )
 @click.option(
-    "--cycle-time-us", type=float, default=None, help="Override cycle time (µs)"
+    "--cycle-time-us", type=float, default=None, help="Override cycle time (us)"
 )
 @click.option("--breakdown", is_flag=True, help="Include structural cost breakdown")
 @click.option(
@@ -454,12 +454,12 @@ def reproduce_ge19_cmd(skip_windowed: bool) -> None:
         reproduce_ge19_windowed,
     )
 
-    click.echo("GE19 (arXiv:1905.09749v3) — logical reconciliation")
+    click.echo("GE19 (arXiv:1905.09749v3) - logical reconciliation")
     _print_rows(reproduce_ge19_logical().rows)
     if not skip_windowed:
         click.echo()
         click.echo(
-            "GE19 (arXiv:1905.09749v3) — windowed construction (§2.3-2.5), "
+            "GE19 (arXiv:1905.09749v3) - windowed construction (sec. 2.3-2.5), "
             "from Qualtran components"
         )
         windowed = reproduce_ge19_windowed()
@@ -471,10 +471,10 @@ def reproduce_ge19_cmd(skip_windowed: bool) -> None:
         )
         click.echo(
             "  'bridged' doubles the adder term only, converting Qualtran's "
-            "Gidney AND-adder to GE19's Cuccaro convention (ASSUMPTIONS.md §6)"
+            "Gidney AND-adder to GE19's Cuccaro convention (ASSUMPTIONS.md sec. 6)"
         )
     click.echo()
-    click.echo("GE19 (arXiv:1905.09749v3) — physical rows")
+    click.echo("GE19 (arXiv:1905.09749v3) - physical rows")
     _print_rows(reproduce_ge19_physical().rows)
 
 
@@ -496,7 +496,7 @@ def reproduce_decomposition_cmd(convention: str) -> None:
 
     conventions = CONVENTIONS if convention == "both" else (convention,)
     for conv in conventions:
-        click.echo(f"2019 => 2025 decomposition (arXiv:2505.15917) — {conv}")
+        click.echo(f"2019 => 2025 decomposition (arXiv:2505.15917) - {conv}")
         _print_rows(reproduce_2019_to_2025(conv).rows)
         click.echo()
 

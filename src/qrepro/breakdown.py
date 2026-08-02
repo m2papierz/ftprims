@@ -1,8 +1,7 @@
 """Per-component cost attribution over the Qualtran call graph.
 
-Structural classification runs at depth 1 so component labels stay stable,
-while each child's gate cost comes from ``QECGatesCost``, which decomposes as
-deep as needed. That separates "where in the algorithm" from "what it costs".
+Structural classification runs at depth 1 so component labels stay stable; each
+child's gate cost comes from ``QECGatesCost``, which decomposes as deep as needed.
 """
 
 from __future__ import annotations

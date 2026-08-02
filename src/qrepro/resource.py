@@ -27,7 +27,7 @@ from qrepro.config import DEFAULT_CONFIG
 def rotation_synthesis_t_cost(epsilon: float) -> int:
     """T-gates to synthesise one arbitrary rotation to precision *epsilon*.
 
-    ``T = ceil(3·log2(1/eps))``, the leading term of Ross & Selinger
+    ``T = ceil(3*log2(1/eps))``, the leading term of Ross & Selinger
     (arXiv:1403.2975) Theorem 1.1; the ``O(log log(1/eps))`` remainder is
     dropped. Non-positive *epsilon* means skip synthesis and returns 0.
     """
@@ -56,7 +56,7 @@ def _default_generalizer(bloq: Bloq) -> Bloq | None:
 def _magic_state_counts(gates) -> tuple[int, int]:
     """Return ``(raw_t, ccz_count)`` from a Qualtran ``GateCounts``.
 
-    Magic-state and rotation conventions: ASSUMPTIONS.md §3.
+    Magic-state and rotation conventions: ASSUMPTIONS.md sec. 3.
     """
     counts = gates.total_t_and_ccz_count(ts_per_rotation=0)
     return int(counts["n_t"]), int(counts["n_ccz"])

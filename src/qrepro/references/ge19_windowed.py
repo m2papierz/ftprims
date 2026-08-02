@@ -1,11 +1,11 @@
-"""GE19 §2.3-2.5 windowed construction, reproduced.
+"""GE19 sec. 2.3-2.5 windowed construction, reproduced.
 
 Derives GE19's logical layer through Qualtran components
 (``qrepro.algorithms.windowed_factoring``) rather than the paper's closed
 forms. Separate from ``qrepro.references.ge19``, which reconciles the paper
 against Qualtran's stock, non-windowed ``ModExp``.
 
-Sources, counting conventions and the measured divergences: ASSUMPTIONS.md §6.
+Sources, counting conventions and the measured divergences: ASSUMPTIONS.md sec. 6.
 """
 
 from __future__ import annotations
@@ -26,7 +26,7 @@ from qrepro.references.values import (
     modexp_toffoli_windowed_qualtran,
 )
 
-#: Window grid swept for the cost minimum (ASSUMPTIONS.md §6).
+#: Window grid swept for the cost minimum (ASSUMPTIONS.md sec. 6).
 WINDOW_GRID = tuple((we, wm) for we in range(3, 9) for wm in range(3, we + 1))
 
 
@@ -48,9 +48,9 @@ def windowed_best_window(n: int) -> tuple[int, int]:
 def windowed_coefficient_series(
     sizes: tuple[int, ...] = WINDOWED_COEFFICIENT_SIZES,
 ) -> tuple[tuple[int, float], ...]:
-    """Measured ``n_ccz / (ne·n²)`` at the best window for each n.
+    """Measured ``n_ccz / (ne*n^2)`` at the best window for each n.
 
-    Falls like ``1/lg²n``; a non-windowed construction gives a constant.
+    Falls like ``1/lg^2n``; a non-windowed construction gives a constant.
     """
     out = []
     for n in sizes:
@@ -106,7 +106,7 @@ class GE19WindowedInstance:
     """The windowed construction's count at one modulus size.
 
     ``total_ccz`` is in Qualtran's adder currency; ``bridged_ccz`` doubles the
-    adder term only, converting to GE19's Cuccaro currency (ASSUMPTIONS.md §6).
+    adder term only, converting to GE19's Cuccaro currency (ASSUMPTIONS.md sec. 6).
     """
 
     n: int
@@ -171,8 +171,8 @@ class GE19WindowedInstance:
 class GE19WindowedReproduction:
     """GE19's windowed modexp, reproduced from Qualtran components.
 
-    ``coefficient_series`` carries the 1/lg²n identification test and
-    ``window_grid`` the full window sweep (ASSUMPTIONS.md §6).
+    ``coefficient_series`` carries the 1/lg^2n identification test and
+    ``window_grid`` the full window sweep (ASSUMPTIONS.md sec. 6).
     """
 
     instances: tuple[GE19WindowedInstance, ...]
