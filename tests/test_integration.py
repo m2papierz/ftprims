@@ -12,11 +12,7 @@ from qrepro.physical import PhysicalModelSpec, estimate_physical
 
 
 class Case(NamedTuple):
-    """A pinned known-good benchmark case.
-
-    Each test asserts the fields it is about; grouping them in one record keeps
-    the parametrisation from carrying values a test never looks at.
-    """
+    """A pinned known-good benchmark case; each test asserts the fields it is about."""
 
     name: str
     params: dict
@@ -89,16 +85,9 @@ def _pair_id(pair) -> str:
     return f"{name}_{'_'.join(str(v) for v in params.values())}"
 
 
-# ── Logical costs ─────────────────────────────────────────────────────────────
-
-
 @pytest.mark.parametrize("case", REFERENCE_CASES, ids=_REF_IDS)
 def test_logical_costs_match_reference(case):
-    """Logical costs must match pinned known-good values.
-
-    These are what *our code* computes against the pinned Qualtran, so a
-    dependency bump that moves any of them has to surface here.
-    """
+    """Logical costs must match the literals pinned against the pinned Qualtran."""
     bench = registry[case.name]
     costs = bench.logical_costs(bench.build_bloq(**case.params))
 
@@ -120,8 +109,8 @@ def test_logical_costs_match_reference(case):
 def test_logical_breakdown_consistency(case):
     """Logical t_count_ftqc must agree with the sum of breakdown est_t_ftqc.
 
-    Two independent extraction paths over the same bloq; they diverge when one
-    misses non-Clifford cost hidden below the top level.
+    Two extraction paths over the same bloq; they diverge when one misses
+    non-Clifford cost hidden below the top level.
     """
     bench = registry[case.name]
     bloq = bench.build_bloq(**case.params)
@@ -142,33 +131,26 @@ def test_logical_breakdown_consistency(case):
 def test_breakdown_dominant_component(case):
     """Breakdown must identify the correct dominant cost component.
 
-    Catches misclassification like AddIntoPhaseGrad tagged as "rotations"
-    when it is actually controlled_nonclifford.
+    Catches misclassification such as AddIntoPhaseGrad tagged as "rotations"
+    when it is controlled_nonclifford.
     """
     bench = registry[case.name]
     items = extract_structural_breakdown(bench.build_bloq(**case.params))
     summary = summarize_breakdown(items)
 
     if sum(i.est_t_ftqc for i in items) == 0:
-        pytest.skip("total FTQC cost is 0 — dominant label undefined")
+        pytest.skip("total FTQC cost is 0 - dominant label undefined")
 
     assert summary["dominant_component"] == case.dominant, (
         f"dominant: {summary['dominant_component']} != {case.dominant}"
     )
 
 
-# ── Physical layer ────────────────────────────────────────────────────────────
-
-
 @pytest.mark.parametrize(
     "name,params", PHYSICAL_CASES, ids=map(_pair_id, PHYSICAL_CASES)
 )
 def test_physical_estimation_sane(name, params):
-    """Physical estimates must be positive and meet the error budget.
-
-    A zero wall_time with the floor code distance means the logical costs
-    reaching the physical layer were empty.
-    """
+    """Physical estimates must be positive and meet the error budget."""
     bench = registry[name]
     costs = bench.logical_costs(bench.build_bloq(**params))
 
@@ -211,12 +193,11 @@ def test_physical_profiles_all_satisfy_budget(profile, factory):
 
 
 def test_ccz2t_distillation_distances_are_searched():
-    """estimate_physical must search CCZ2T distillation distances, not accept
-    Qualtran's construction default (15, 31).
+    """estimate_physical must search CCZ2T distillation distances rather than
+    accept Qualtran's construction default (15, 31).
 
     On QFT n=32 textbook the default costs 184,004 physical qubits against the
-    search's (13, 17) at 119,492, a 35% difference. The selected distances are
-    recorded on the result.
+    search's (13, 17) at 119,492.
     """
     bench = registry["qft"]
     costs = bench.logical_costs(bench.build_bloq(n=32, variant="textbook"))
@@ -237,9 +218,6 @@ def test_ccz2t_distillation_distances_are_searched():
         f"search={searched.physical_qubits:,} did not beat "
         f"default(15,31)={pinned.physical_qubits:,}"
     )
-
-
-# ── Correctness and scaling ───────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize("name,params", VERIFY_CASES, ids=map(_pair_id, VERIFY_CASES))
@@ -274,8 +252,7 @@ def test_verify_small_passes(name, params):
 def test_t_count_monotonic(name, param_key, sizes, fixed):
     """T-count must be non-decreasing as the problem size grows.
 
-    Covers sizes outside the pinned reference table, where a Qualtran change
-    would otherwise go unnoticed.
+    Covers sizes outside the pinned reference table.
     """
     bench = registry[name]
     prev_t = -1
@@ -284,17 +261,13 @@ def test_t_count_monotonic(name, param_key, sizes, fixed):
         costs = bench.logical_costs(bench.build_bloq(**params))
         assert costs.t_count_ftqc >= prev_t, (
             f"{name}({params}): t_count_ftqc={costs.t_count_ftqc} < "
-            f"previous={prev_t} — scaling not monotonic"
+            f"previous={prev_t} - scaling not monotonic"
         )
         prev_t = costs.t_count_ftqc
 
 
 def test_approx_qft_cheaper_than_textbook():
-    """Approximate QFT must cost strictly less than textbook for n >= 8.
-
-    The approximate variant truncates small-angle rotations, so the ratio is
-    rotation-synthesis cost alone.
-    """
+    """Approximate QFT must cost strictly less than textbook for n >= 8."""
     bench = registry["qft"]
     for n in [8, 16, 32, 64]:
         tb = bench.logical_costs(bench.build_bloq(n=n, variant="textbook"))

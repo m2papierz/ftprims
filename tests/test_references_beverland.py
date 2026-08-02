@@ -1,7 +1,7 @@
 """Beverland et al. reproduction (arXiv:2211.07629).
 
-Plumbing check, not independent convergence: Qualtran ships the Beverland
-model. Targets and the quantum-dynamics paper defect: ASSUMPTIONS.md §1.
+A wiring check, not independent convergence: Qualtran ships the Beverland model.
+Targets and the quantum-dynamics paper defect: ASSUMPTIONS.md sec. 1.
 """
 
 from __future__ import annotations

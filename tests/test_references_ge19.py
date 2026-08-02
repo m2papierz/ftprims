@@ -43,16 +43,13 @@ def windowed():
     return reproduce_ge19_windowed()
 
 
-# ── Logical counts ────────────────────────────────────────────────────────────
-
-
 def test_ge19_logical_qubits_formula(logical):
-    """3n + 0.002·n·lg n rounds to the abstract's 6189 at n=2048."""
+    """3n + 0.002*n*lg n rounds to the abstract's 6189 at n=2048."""
     assert round(logical.logical_qubits_formula) == GE19["logical_qubits"]
 
 
 def test_ge19_toffoli_formula_matches_table1(logical):
-    """The abstract formula evaluates 2.9% below Table 1's rounded 2.7e9."""
+    """The abstract formula evaluates 2.81% below Table 1's rounded 2.7e9."""
     assert logical.toffoli_formula == pytest.approx(GE19["toffoli_count"], rel=0.05)
 
 
@@ -64,7 +61,7 @@ def test_modexp_call_graph_count_pinned(logical):
 def test_modexp_and_only_count_pinned():
     """The and_bloq-only count, pinned so the two currencies cannot drift.
 
-    Aggregation rule and both literals: ASSUMPTIONS.md §3/§4.
+    Aggregation rule and both literals: ASSUMPTIONS.md sec. 3 and 4.
     """
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
@@ -72,7 +69,7 @@ def test_modexp_and_only_count_pinned():
 
     gates = get_cost_value(make_shor_modexp(GE19["n"]), QECGatesCost())
     assert int(gates.and_bloq) == GE19["modexp_qualtran_and_only"]
-    assert int(gates.cswap) == 2 * GE19["n"] * GE19["n"]  # ne·n, ne = 2n
+    assert int(gates.cswap) == 2 * GE19["n"] * GE19["n"]  # ne*n, ne = 2n
     assert (
         GE19["modexp_qualtran_and_only"] + int(gates.cswap)
         == GE19["modexp_qualtran_toffoli"]
@@ -83,10 +80,10 @@ def test_modexp_and_only_count_pinned():
 def test_factoring_bloqs_build_at_every_tabulated_size(n):
     """Both factories must build at every n GE19 tabulates.
 
-    Regression: the placeholder ``2^n - 1`` is divisible by ``2^d - 1`` for
-    every ``d | n``, so the default base 7 shares a factor with it whenever
-    ``3 | n`` -- ``make_shor_modexp(3072)`` used to fail ModExp's coprimality
-    assertion. ``placeholder_modulus`` steps down until coprime.
+    The placeholder ``2^n - 1`` is divisible by ``2^d - 1`` for every ``d | n``,
+    so the default base 7 shares a factor with it whenever ``3 | n`` and
+    ``make_shor_modexp(3072)`` fails ModExp's coprimality assertion.
+    ``placeholder_modulus`` steps down until coprime.
     """
     import math
 
@@ -109,10 +106,9 @@ def test_placeholder_modulus_does_not_move_the_pinned_count():
 
 
 def test_modexp_coefficient_converges(logical):
-    """n_ccz/(ne·n²) converges to a constant — the reference regime.
+    """n_ccz/(ne*n^2) converges to a constant, identifying the reference regime.
 
-    A windowed construction would fall like 1/lg²n across this range; a
-    constant identifies the non-windowed regime on the scaling alone.
+    A windowed construction would fall like 1/lg^2 n across this range.
     """
     coeffs = [c for _, c in sorted(logical.coefficient_series)]
     assert coeffs, "coefficient series must be populated"
@@ -122,9 +118,9 @@ def test_modexp_coefficient_converges(logical):
 
 
 def test_modexp_matches_fitted_half_reference(logical):
-    """Regression pin on the fitted 10·ne·n² coefficient.
+    """Regression pin on the fitted 10*ne*n^2 coefficient.
 
-    Not evidence — the coefficient is fitted. Attribution rests on
+    Not evidence, since the coefficient is fitted; attribution rests on
     test_modexp_coefficient_converges.
     """
     assert logical.modexp_ccz_count == pytest.approx(
@@ -136,8 +132,8 @@ def test_modexp_matches_fitted_half_reference(logical):
 
 
 def test_modexp_vs_formula_divergence(logical):
-    """The ~64x logical divergence, asserted in a band wide enough to absorb
-    which denominator convention is used."""
+    """The ~64x logical divergence, in a band wide enough to absorb the choice
+    of denominator convention."""
     assert (
         GE19_TOL["divergence_lo"]
         <= logical.divergence_ratio
@@ -145,17 +141,17 @@ def test_modexp_vs_formula_divergence(logical):
     )
 
 
-# ── Windowed logical (§2.3-2.5, the optimized construction) ───────────────────
+# Windowed logical (sec. 2.3-2.5, the optimized construction)
 # Targets, tolerances, achieved deviations and the named cause of every gap:
-# ASSUMPTIONS.md §6.
+# ASSUMPTIONS.md sec. 6.
 
 WINDOWED_N = (1024, 2048, 3072)
 
 
 @pytest.mark.parametrize("n", WINDOWED_N)
 def test_windowed_count_pinned(windowed, n):
-    """Pins the total and all three terms, so a shift between terms cannot
-    hide inside a matching total."""
+    """Pin the total and all three terms, so a shift between terms cannot hide
+    inside a matching total."""
     inst = windowed.by_n(n)
     achieved = GE19_WINDOWED_ACHIEVED[f"n{n}"]
     assert (inst.exp_window, inst.mul_window) == achieved["window"]
@@ -168,7 +164,7 @@ def test_windowed_count_pinned(windowed, n):
 
 @pytest.mark.parametrize("n", WINDOWED_N)
 def test_windowed_terms_sum_to_total(windowed, n):
-    """The term attribution covers the whole count -- no unattributed remainder."""
+    """The term attribution covers the whole count, with no unattributed remainder."""
     inst = windowed.by_n(n)
     assert inst.adder_ccz + inst.lookup_ccz + inst.unlookup_ccz == inst.total_ccz
     assert inst.bridged_ccz == inst.total_ccz + inst.adder_ccz
@@ -185,11 +181,7 @@ def test_windowed_vs_table1_band(windowed, n):
 
 @pytest.mark.parametrize("n", WINDOWED_N)
 def test_windowed_bridged_matches_table1(windowed, n):
-    """Bridging only the adder term recovers Table 1.
-
-    The reconciliation the construction rests on: one named substitution and
-    nothing else.
-    """
+    """Bridging only the adder term recovers Table 1."""
     ratio = windowed.by_n(n).bridged_table1_ratio
     lo = GE19_WINDOWED_TOL["bridged_table1_lo"][f"n{n}"]
     hi = GE19_WINDOWED_TOL["bridged_table1_hi"][f"n{n}"]
@@ -200,8 +192,8 @@ def test_windowed_bridged_matches_table1(windowed, n):
 def test_windowed_bridged_vs_anc_model(windowed, n):
     """Bridged vs GE19's own ancillary cost model.
 
-    Deliberately looser than the Table 1 band -- the anc literals include carry
-    runways this construction excludes, and carry weaker provenance.
+    Looser than the Table 1 band: the anc literals include carry runways this
+    construction excludes, and carry weaker provenance.
     """
     ratio = windowed.by_n(n).bridged_anc_ratio
     assert (
@@ -213,7 +205,7 @@ def test_windowed_bridged_vs_anc_model(windowed, n):
 
 @pytest.mark.parametrize("n", WINDOWED_N)
 def test_windowed_vs_closed_form_16(windowed, n):
-    """Count vs 16·ne·n²/lg²n -- L602's 24 in Qualtran's adder currency."""
+    """Count vs 16*ne*n^2/lg^2n -- L602's 24 in Qualtran's adder currency."""
     inst = windowed.by_n(n)
     assert inst.total_ccz == pytest.approx(
         inst.closed_form_16, rel=GE19_WINDOWED_TOL["rel_closed_form_16"]
@@ -221,9 +213,9 @@ def test_windowed_vs_closed_form_16(windowed, n):
 
 
 def test_windowed_falloff_is_one_over_lg_squared_n(windowed):
-    """total/(ne·n²) falls like 1/lg²n; a non-windowed construction is constant.
+    """total/(ne*n^2) falls like 1/lg^2 n; a non-windowed construction is constant.
 
-    Compare test_modexp_coefficient_converges. Uses no external number.
+    Uses no external number. Compare test_modexp_coefficient_converges.
     """
     series = sorted(windowed.coefficient_series)
     assert len(series) >= 5, series
@@ -239,10 +231,7 @@ def test_windowed_falloff_is_one_over_lg_squared_n(windowed):
 
 
 def test_windowed_window_sweep_minimum(windowed):
-    """The cost minimum over the grid equals GE19 L690's published (5, 5).
-
-    L690 is what justifies (5, 5); this checks it was not fitted here.
-    """
+    """The cost minimum over the grid equals GE19 L690's published (5, 5)."""
     assert windowed.window_argmin == GE19_WINDOWED_ACHIEVED["window_argmin_n2048"]
     assert windowed.window_argmin == (
         GE19_WINDOWED["exp_window"],
@@ -253,7 +242,7 @@ def test_windowed_window_sweep_minimum(windowed):
 def test_windowed_cost_is_convex_in_window_area(windowed):
     """Cost is U-shaped in k = w_e + w_m: small k pays adder, large k lookup.
 
-    The balance L602 describes; a monotone curve means one term stopped scaling.
+    A monotone curve would mean one term stopped scaling.
     """
     best_by_k: dict[int, int] = {}
     for we, wm, total in windowed.window_grid:
@@ -277,11 +266,11 @@ def test_windowed_adder_share_dominates(windowed):
     ), share
 
 
-# ── Windowed construction: gate-field and structural guards ───────────────────
+# Windowed construction: gate-field and structural guards
 
 
 def test_windowed_emits_no_cswap():
-    """Guards the uncontrolled-multiplication decision (ASSUMPTIONS.md §6)."""
+    """Guards the uncontrolled-multiplication decision (ASSUMPTIONS.md sec. 6)."""
     from qualtran.resource_counting import QECGatesCost, get_cost_value
 
     from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
@@ -308,8 +297,8 @@ def test_windowed_uses_both_gate_fields():
 def test_windowed_call_graph_stays_collapsed():
     """The call graph must stay O(10) nodes, not O(n_e).
 
-    Building the QROAMClean from data instead of bitsize would make every
-    lookup addition a distinct bloq and the count would never terminate.
+    Built from data instead of bitsize, every lookup addition would be a
+    distinct bloq and the count would never terminate.
     """
     from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
 
@@ -339,9 +328,9 @@ def test_windowed_is_far_cheaper_than_stock_modexp():
     assert windowed_total * 50 < GE19["modexp_qualtran_toffoli"]
 
 
-# ── Windowed construction: toy-size correctness ──────────────────────────────
+# Windowed construction: toy-size correctness
 # These use the exact non-padded variant (coset_padding=0 with ModAdd); the
-# coset representation itself is not simulated -- see ASSUMPTIONS.md §6.
+# coset representation itself is not simulated -- see ASSUMPTIONS.md sec. 6.
 
 
 def test_windowed_lookup_addition_classical_action():
@@ -362,7 +351,7 @@ def test_windowed_lookup_addition_classical_action():
 
 
 def test_windowed_multiply_add_classical_action():
-    """y -> y + x·(multiplier^addr) mod N through the real decomposition."""
+    """y -> y + x*(multiplier^addr) mod N through the real decomposition."""
     from qrepro.algorithms.windowed_factoring import WindowedMultiplyAdd
 
     mod, multiplier = 15, 7
@@ -388,7 +377,7 @@ def test_windowed_multiply_add_classical_action():
 
 
 def test_windowed_mod_mul_clears_its_source_register():
-    """x -> x·k mod N by two passes; the source must end at |0>.
+    """x -> x*k mod N by two passes; the source must end at |0>.
 
     ``bb.free`` raises if the unmultiply left anything behind.
     """
@@ -439,9 +428,6 @@ def test_windowed_modexp_classical_action(mod, base, n, ne):
     for e in range(2**ne):
         assert decomposed.call_classically(exponent=e) == (e, pow(base, e, mod))
         assert bloq.call_classically(exponent=e) == (e, pow(base, e, mod))
-
-
-# ── Windowed construction: input validation ───────────────────────────────────
 
 
 @pytest.mark.parametrize(
@@ -500,8 +486,7 @@ def test_windowed_refuses_to_decompose_without_table_data():
 def test_windowed_runway_exclusion_is_measurable(windowed):
     """Runways are off by default and turning them on costs count.
 
-    This construction's uplift diverges from GE19's own model; the divergence
-    is recorded rather than reconciled in ASSUMPTIONS.md §6.
+    The uplift diverges from GE19's own model; ASSUMPTIONS.md sec. 6.
     """
     from qrepro.algorithms.windowed_factoring import make_ge19_windowed_modexp
     from qrepro.references.ge19_windowed import windowed_total_ccz
@@ -518,9 +503,6 @@ def test_windowed_runway_exclusion_is_measurable(windowed):
     )
 
 
-# ── Physical layer ────────────────────────────────────────────────────────────
-
-
 def test_ge19_uses_papers_own_inputs(physical):
     """Both free parameters are GE19's published values, not choices."""
     assert physical.error_budget == GE19_QREPRO["error_budget"] == 0.31
@@ -530,10 +512,7 @@ def test_ge19_uses_papers_own_inputs(physical):
 
 
 def test_ge19_grid_search_finds_papers_own_factory(physical):
-    """At GE19's own budget and factory count the search picks GE19's factory.
-
-    Direct refutation of "GE19's factory lies outside the model's family".
-    """
+    """At GE19's own budget and factory count the search picks GE19's factory."""
     t3 = GE19["physical_rows"]["table3_authoritative"]
     assert physical.parallel.factory_l1_d == t3["d1"] == 15
     assert physical.parallel.factory_l2_d == t3["d2"] == 27
@@ -554,7 +533,7 @@ def test_ge19_one_factory_runtime(physical):
     """1-factory runtime vs Table 2's 6 days (-11.2%).
 
     Conventions cannot be matched here: GE19 publishes only an *expected*
-    runtime for this scenario. See ASSUMPTIONS.md §4.
+    runtime for this scenario. See ASSUMPTIONS.md sec. 4.
     """
     assert physical.one_factory_runtime_hr == pytest.approx(
         physical.one_factory_target_runtime_hr_expected, rel=GE19_TOL["rel_runtime"]
@@ -573,7 +552,7 @@ def test_ge19_parallel_qubits(physical):
 
 
 def test_ge19_parallel_runtime_per_run(physical):
-    """Per run vs Table 3's 5.1 hr/run (-10.5%) — the like-for-like comparison."""
+    """Per run vs Table 3's 5.1 hr/run (-10.5%) - the like-for-like comparison."""
     assert physical.parallel_runtime_hr == pytest.approx(
         physical.parallel_target_runtime_hr_per_run, rel=GE19_TOL["rel_runtime"]
     )
@@ -587,11 +566,7 @@ def test_ge19_parallel_runtime_expected(physical):
 
 
 def test_ge19_tables_2_and_3_are_consistent():
-    """Table 2 and Table 3 reconcile exactly via the published retry risk.
-
-    A property of the paper, asserted so "the two tables disagree" cannot be
-    reintroduced.
-    """
+    """Table 2 and Table 3 reconcile exactly via the published retry risk."""
     t3 = GE19["physical_rows"]["table3_authoritative"]
     t2 = GE19["physical_rows"]["parallel"]
     assert t3["runtime_hr_per_run"] / (1 - t3["retry"]) / 24 == pytest.approx(

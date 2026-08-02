@@ -1,7 +1,4 @@
-"""
-CLI round-trip tests: invoke the real CLI subprocess, parse JSON output,
-verify it matches the Python API.
-"""
+"""CLI round-trip tests: invoke the CLI subprocess, check its JSON against the API."""
 
 from __future__ import annotations
 
@@ -27,10 +24,9 @@ def _run_cli(*args: str) -> dict:
     return json.loads("\n".join(lines[json_start:]))
 
 
-# Two cases prove the property: one rotation-heavy (t_ftqc diverges from
-# t_direct), one rotation-free (they coincide). The per-primitive values
-# themselves are pinned in-process by test_integration.REFERENCE_CASES —
-# repeating them here only buys extra subprocess launches.
+# One rotation-heavy case (t_ftqc diverges from t_direct) and one rotation-free
+# case (they coincide). Per-primitive values are pinned in-process by
+# test_integration.REFERENCE_CASES.
 CLI_CASES = [
     (
         ["qft", "-p", "n=32", "-p", "variant=textbook"],

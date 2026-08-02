@@ -1,7 +1,7 @@
-"""2019 -> 2025 decomposition (arXiv:2505.15917).
+"""2019 to 2025 decomposition (arXiv:2505.15917).
 
-Both Toffoli conventions are exercised, which bounds the convention mismatch
-instead of hiding it. See ASSUMPTIONS.md §3.
+Both Toffoli conventions are exercised, bounding the convention mismatch.
+ASSUMPTIONS.md sec. 3.
 """
 
 from __future__ import annotations
@@ -61,8 +61,8 @@ def test_g2025_stays_above_published_qubit_target(decompositions, convention):
 def test_2019_to_2025_algorithmic_ratio(decompositions, convention, n_factories):
     """The algorithmic reduction the model captures.
 
-    Asserted in [2.5, 6.0]: the achieved span across factory counts
-    {1, 16, 28} x conventions {per_run, expected} is 2.63x .. 5.64x.
+    Band [2.5, 6.0]; achieved span across factory counts {1, 16, 28} and
+    conventions {per_run, expected} is 2.63x to 5.64x.
     """
     ratio = decompositions[convention].by_factories(n_factories).algorithmic_ratio
     assert G2025_TOL["algo_ratio_lo"] <= ratio <= G2025_TOL["algo_ratio_hi"]
