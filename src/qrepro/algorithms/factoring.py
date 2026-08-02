@@ -27,7 +27,7 @@ def placeholder_modulus(n_bits: int, base: int) -> int:
     assertion. Stepping down by 2 finds a usable modulus in a few iterations.
     """
     if n_bits < 2:
-        raise ValueError(f"n_bits must be ≥ 2, got {n_bits}")
+        raise ValueError(f"n_bits must be >= 2, got {n_bits}")
     mod = (1 << n_bits) - 1
     while math.gcd(base, mod) != 1:
         mod -= 2
@@ -39,7 +39,7 @@ def placeholder_modulus(n_bits: int, base: int) -> int:
 def make_shor_modexp(n_bits: int, *, base: int = 7):
     """Build a Shor ``ModExp`` for an *n_bits*-bit RSA modulus.
 
-    Constructs the bloq directly (``exp_bitsize = 2·n_bits``,
+    Constructs the bloq directly (``exp_bitsize = 2*n_bits``,
     ``x_bitsize = n_bits``) rather than via ``ModExp.make_for_shor``, whose
     float ``ceil(log2(N))`` rounds down for thousand-bit integers and yields an
     ``x_bitsize`` one bit too small to hold residues mod N, raising
@@ -63,13 +63,13 @@ def modexp_logical_costs(
 
     Covers both Qualtran's stock ``ModExp`` and ``WindowedModExp``. Magic-state
     and raw-T totals come from ``QECGatesCost`` over the call graph, aggregated
-    as ``n_ccz`` (ASSUMPTIONS.md §3); *logical_qubits* is the paper's analytic
+    as ``n_ccz`` (ASSUMPTIONS.md sec. 3); *logical_qubits* is the paper's analytic
     count. ``resource.extract_logical_costs`` cannot be used here: it calls
     ``QubitCount``, which hangs on these bloqs at n >= 128.
 
     The ``n_ccz`` aggregate is load-bearing for the windowed construction, whose
     cost spans two ``GateCounts`` fields -- the lookup lands in ``and_bloq``,
-    the whole unlookup term in ``toffoli`` (ASSUMPTIONS.md §6).
+    the whole unlookup term in ``toffoli`` (ASSUMPTIONS.md sec. 6).
     """
     gates = get_cost_value(modexp_bloq, QECGatesCost())
     counts = gates.total_t_and_ccz_count(ts_per_rotation=0)

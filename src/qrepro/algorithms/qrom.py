@@ -28,10 +28,6 @@ _MAX_VERIFY_DATA_SIZE = 32
 _RNG_SEED = 42
 
 
-def _is_power_of_two(n: int) -> bool:
-    return n >= 1 and (n & (n - 1)) == 0
-
-
 def _generate_data(data_size: int, target_bitsize: int) -> tuple[int, ...]:
     """Deterministic random lookup table fitting in *target_bitsize* bits."""
     rng = np.random.default_rng(_RNG_SEED)
@@ -47,28 +43,20 @@ def _build_qrom(
 ) -> Bloq:
     """Construct a ``QROM`` or ``SelectSwapQROM`` bloq.
 
-    Parameters
-    ----------
-    data_size:
-        Number of table entries; must be a power of two and >= 2.
-    target_bitsize:
-        Bit-width of each output value.
-    variant:
-        ``"basic"`` or ``"selectswap"``.
-    log_block_sizes:
-        Block-size exponent for ``selectswap``, in [1, log2(data_size) - 1].
-        Ignored for ``basic``.
+    *data_size* is the number of table entries and must be a power of two >= 2.
+    *log_block_sizes* is the ``selectswap`` block-size exponent, in
+    [1, log2(data_size) - 1]; it is ignored for ``basic``.
     """
     if variant not in _VARIANTS:
         raise ValueError(
             f"Unknown QROM variant {variant!r}; choose from {sorted(_VARIANTS)}"
         )
     if data_size < 2:
-        raise ValueError(f"data_size must be ≥ 2, got {data_size}")
-    if not _is_power_of_two(data_size):
+        raise ValueError(f"data_size must be >= 2, got {data_size}")
+    if data_size & (data_size - 1):
         raise ValueError(f"data_size must be a power of two, got {data_size}")
     if target_bitsize < 1:
-        raise ValueError(f"target_bitsize must be ≥ 1, got {target_bitsize}")
+        raise ValueError(f"target_bitsize must be >= 1, got {target_bitsize}")
 
     if variant == "selectswap" and log_block_sizes is not None:
         sel_bits = int(math.log2(data_size))

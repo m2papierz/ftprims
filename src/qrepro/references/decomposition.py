@@ -4,7 +4,7 @@ Runs GE19's and G2025's logical counts through the same CCZ2T grid search at a
 fixed factory count, separating the physical-qubit improvement the model
 captures (fewer logical qubits) from what it cannot (yoked codes, cultivation).
 The papers' Toffoli conventions differ and are normalised first
-(ASSUMPTIONS.md §3).
+(ASSUMPTIONS.md sec. 3).
 """
 
 from __future__ import annotations
@@ -18,7 +18,7 @@ from qrepro.references.values import G2025, G2025_QREPRO, GE19
 
 _FACTORY_COUNTS = (1, 16, 28)
 
-#: Toffoli-count normalisations (ASSUMPTIONS.md §3).
+#: Toffoli-count normalisations (ASSUMPTIONS.md sec. 3).
 CONVENTIONS = ("per_run", "expected")
 
 

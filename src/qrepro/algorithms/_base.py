@@ -25,7 +25,7 @@ class LogicalCosts:
     """Logical-level resource counts.
 
     ``magic_state_count`` is the aggregate ``And + Toffoli + CSwap`` count, one
-    CCZ each (ASSUMPTIONS.md §3).
+    CCZ each (ASSUMPTIONS.md sec. 3).
     """
 
     logical_qubits_estimate: int
@@ -48,16 +48,10 @@ class LogicalCosts:
     ) -> "LogicalCosts":
         """Build a ``LogicalCosts`` from a magic-state count and a qubit count.
 
-        Parameters
-        ----------
-        magic_states:
-            Aggregate magic-state count (ASSUMPTIONS.md §3); the shared
-            ``raw_t + 4*magic_states`` T-equivalent convention applies.
-        logical_qubits:
-            Logical-qubit count, from a paper's analytic formula rather than a
-            traced ``QubitCount``, which is O(gates) and hangs at n >= 128.
-        raw_t:
-            Additional raw T-gates; factoring is Toffoli-dominated.
+        *magic_states* is the aggregate count of ASSUMPTIONS.md sec. 3, priced
+        as ``raw_t + 4*magic_states`` T-equivalents. *logical_qubits* comes from
+        a paper's analytic formula rather than a traced ``QubitCount``, which is
+        O(gates) and hangs at n >= 128.
         """
         magic_state_count = int(magic_states)
         t_direct = raw_t + 4 * magic_state_count

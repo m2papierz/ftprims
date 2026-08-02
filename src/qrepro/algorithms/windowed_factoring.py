@@ -1,16 +1,16 @@
-"""GE19 §2.3-2.5 windowed modular exponentiation, built from Qualtran leaves::
+"""GE19 sec. 2.3-2.5 windowed modular exponentiation, built from Qualtran leaves::
 
     WindowedModExp                 ceil(n_e/w_e) uncontrolled multiplications
-    └── WindowedModMul             2 multiply-add passes
-        └── WindowedMultiplyAdd    ceil(mul_in_bits/w_m) lookup additions
-            └── LookupAddition     QROAMClean -> Add -> QROAMClean.adjoint()
+      WindowedModMul               2 multiply-add passes
+        WindowedMultiplyAdd        ceil(mul_in_bits/w_m) lookup additions
+          LookupAddition           QROAMClean -> Add -> QROAMClean.adjoint()
 
 Costs come from ``build_call_graph`` only; ``build_composite_bloq`` materialises
 real lookup tables and is for the toy-size correctness tests. Extract with
 :func:`qrepro.algorithms.factoring.modexp_logical_costs`.
 
 Leaf costs, counting conventions, parameter sources and the measured
-divergences from GE19 Table 1: ASSUMPTIONS.md §6.
+divergences from GE19 Table 1: ASSUMPTIONS.md sec. 6.
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ Multiplier = Union[int, sympy.Expr]
 
 
 def ge19_coset_padding(n: int, n_e: float) -> int:
-    """Coset padding ``g_pad = 2·lg n + lg n_e + 10`` (GE19 §2.7 L690).
+    """Coset padding ``g_pad = 2*lg n + lg n_e + 10`` (GE19 sec. 2.7 L690).
 
     *n* is the RSA modulus bit length, *n_e* the exponent register bit length.
     """
@@ -56,23 +56,23 @@ def ge19_coset_padding(n: int, n_e: float) -> int:
 
 
 def ge19_exponent_bitsize(n: int) -> int:
-    """Ekera-Hastad exponent length ``n_e = ceil(1.5·n)`` (GE19 L482)."""
+    """Ekera-Hastad exponent length ``n_e = ceil(1.5*n)`` (GE19 L482)."""
     return math.ceil(1.5 * n)
 
 
 def _require_positive_int(name: str, value: int, minimum: int = 1) -> None:
     if not isinstance(value, (int, np.integer)) or value < minimum:
-        raise ValueError(f"{name} must be an int ≥ {minimum}, got {value!r}")
+        raise ValueError(f"{name} must be an int >= {minimum}, got {value!r}")
 
 
 @frozen
 class LookupAddition(Bloq):
-    """One windowed lookup addition ``y += table[addr]`` (GE19 §2.5 L590-595).
+    """One windowed lookup addition ``y += table[addr]`` (GE19 sec. 2.5 L590-595).
 
     The innermost leaf, and the only level carrying magic-state cost.
     ``QROAMClean`` is required: ``QROM.adjoint()`` does not use
     measurement-based uncomputation and ``SelectSwapQROM`` is the wrong shape
-    (ASSUMPTIONS.md §6).
+    (ASSUMPTIONS.md sec. 6).
 
     Parameters
     ----------
@@ -156,7 +156,7 @@ class LookupAddition(Bloq):
         if self.table is None:
             raise DecomposeTypeError(
                 f"cannot decompose {self} without table data; supply `table` "
-                "(toy sizes only — at scale the data-free call graph is the "
+                "(toy sizes only - at scale the data-free call graph is the "
                 "costing path)"
             )
         qrom = self._qrom()
@@ -177,19 +177,19 @@ class LookupAddition(Bloq):
 
 @frozen
 class WindowedMultiplyAdd(Bloq):
-    """One multiply-add pass ``y += x·k`` by windowed lookup (GE19 §2.5 L590).
+    """One multiply-add pass ``y += x*k`` by windowed lookup (GE19 sec. 2.5 L590).
 
     Each lookup addition fuses the ``w_e`` exponent-window bits with ``w_m``
     bits of the input factor ``x`` into one ``2^(w_e+w_m)``-entry address
     (GE19 L591), so the exponent enters as address bits rather than as a
-    control. Window ``i`` contributes ``x_i · k · 2^(i·w_m)`` with
+    control. Window ``i`` contributes ``x_i * k * 2^(i*w_m)`` with
     ``k = multiplier^addr mod N``; entries are canonicalised into ``[0, N)``
     (GE19 L667-670).
 
     Parameters
     ----------
     multiplier:
-        Base power ``g^(2^(j·w_e)) mod N`` for this exponent window, or a
+        Base power ``g^(2^(j*w_e)) mod N`` for this exponent window, or a
         ``sympy`` symbol on the call-graph path (cost is data-independent).
     mod:
         The RSA modulus ``N``.
@@ -199,7 +199,7 @@ class WindowedMultiplyAdd(Bloq):
         ``w_e`` and ``w_m``.
     input_slack_bits:
         Extra bits of ``x`` iterated over beyond ``width`` (GE19 anc:170).
-        Must be 0 to decompose. Sensitivity: ASSUMPTIONS.md §6.
+        Must be 0 to decompose. Sensitivity: ASSUMPTIONS.md sec. 6.
     invert:
         Use ``-k^-1 mod N`` instead of ``k`` -- the unmultiply pass that clears
         the source register. Cost-identical, so the call graph ignores it.
@@ -224,7 +224,7 @@ class WindowedMultiplyAdd(Bloq):
         _require_positive_int("mod", self.mod, minimum=3)
         if self.input_slack_bits < 0:
             raise ValueError(
-                f"input_slack_bits must be ≥ 0, got {self.input_slack_bits}"
+                f"input_slack_bits must be >= 0, got {self.input_slack_bits}"
             )
 
     @cached_property
@@ -251,7 +251,7 @@ class WindowedMultiplyAdd(Bloq):
         ``mul_in_bits`` past a multiple of ``w_m``. The excess is charged but
         not built: the slack bits belong to no register, so the decomposition
         cannot represent them and refuses to run while they are set. The
-        divergence is pinned rather than reconciled (ASSUMPTIONS.md §6).
+        divergence is pinned rather than reconciled (ASSUMPTIONS.md sec. 6).
         """
         return math.ceil(self.mul_in_bits / self.mul_window)
 
@@ -291,7 +291,7 @@ class WindowedMultiplyAdd(Bloq):
         return out
 
     def _window_term(self, x_i: int, k: int, start_bit: int) -> int:
-        """One window's contribution ``x_i · k · 2^start_bit``, canonicalised
+        """One window's contribution ``x_i * k * 2^start_bit``, canonicalised
         into ``[0, N)`` (GE19 L667-670)."""
         return (x_i * k * (1 << start_bit)) % self.mod
 
@@ -308,11 +308,11 @@ class WindowedMultiplyAdd(Bloq):
         return tuple(entries)
 
     def _accumulate(self, x: int, k: int) -> int:
-        """``x·k`` as the lookup additions build it up, window by window.
+        """``x*k`` as the lookup additions build it up, window by window.
 
-        Congruent to ``x·k`` mod N but not reduced to it: every window
+        Congruent to ``x*k`` mod N but not reduced to it: every window
         contributes its own canonicalised term, so the total lands somewhere in
-        ``[0, n_factor_windows·N)``. That is the coset representation's
+        ``[0, n_factor_windows*N)``. That is the coset representation's
         operational content -- a plain, non-modular ``Add`` preserves the
         residue and the padding absorbs the accumulated multiples of N.
         """
@@ -366,7 +366,7 @@ class WindowedMultiplyAdd(Bloq):
         k = self._multiplier_for(addr)
         if self.exact_modular:
             return {"addr": addr, "x": x, "y": (y + x * k) % self.mod}
-        # Coset regime: the register keeps a representative of y + x·k mod N,
+        # Coset regime: the register keeps a representative of y + x*k mod N,
         # not the residue -- which one depends on how the windows split `x`.
         return {
             "addr": addr,
@@ -377,12 +377,12 @@ class WindowedMultiplyAdd(Bloq):
 
 @frozen
 class WindowedModMul(Bloq):
-    """``x *= base_power^addr mod N``, uncontrolled (GE19 §2.5 L590).
+    """``x *= base_power^addr mod N``, uncontrolled (GE19 sec. 2.5 L590).
 
     Two multiply-add passes (GE19 L694) -- multiply into a fresh workspace,
     then unmultiply to clear the source -- followed by a register relabel. No
     CSwap is emitted: these multiplications are uncontrolled, so unlike
-    Qualtran's ``CModMulK`` the relabel is bookkeeping (ASSUMPTIONS.md §6).
+    Qualtran's ``CModMulK`` the relabel is bookkeeping (ASSUMPTIONS.md sec. 6).
 
     Uncontrolled means this is correct only inside the full windowed
     exponentiation loop. It has no control wire and cannot be conditionally
@@ -438,11 +438,11 @@ class WindowedModMul(Bloq):
                 f"cannot decompose {self} with symbolic base_power"
             )
         y = bb.allocate(self.width)
-        # y += x·k
+        # y += x*k
         addr, x, y = bb.add(
             self._multiply_add(self.base_power, invert=False), addr=addr, x=x, y=y
         )
-        # x += y·(-k^-1)  ==>  x == 0
+        # x += y*(-k^-1)  ==>  x == 0
         addr, y, x = bb.add(
             self._multiply_add(self.base_power, invert=True), addr=addr, x=y, y=x
         )
@@ -462,10 +462,10 @@ class WindowedModMul(Bloq):
 
 @frozen
 class WindowedModExp(Bloq):
-    """GE19 §2.3-2.5 windowed modular exponentiation.
+    """GE19 sec. 2.3-2.5 windowed modular exponentiation.
 
-    For each exponent window ``e[j·w_e : (j+1)·w_e]`` there is one uncontrolled
-    multiplication by ``g^(2^(j·w_e)·e[...]) mod N`` (GE19 §2.5 L590), with all
+    For each exponent window ``e[j*w_e : (j+1)*w_e]`` there is one uncontrolled
+    multiplication by ``g^(2^(j*w_e)*e[...]) mod N`` (GE19 sec. 2.5 L590), with all
     ``2^w_e`` values classically precomputed (GE19 L575) into the lookup tables.
 
     Parameters
@@ -478,10 +478,10 @@ class WindowedModExp(Bloq):
         ``w_e`` and ``w_m``, defaulting to GE19 L690's published (5, 5).
     coset_padding:
         ``g_pad``; ``None`` resolves to :func:`ge19_coset_padding`. Padding is
-        what lets a plain non-modular adder do modular addition (GE19 §2.4 L542).
+        what lets a plain non-modular adder do modular addition (GE19 sec. 2.4 L542).
     runway_sep:
-        Carry-runway separation ``g_sep`` (GE19 §2.6). ``None`` means runways
-        are off and excluded from the count (ASSUMPTIONS.md §6).
+        Carry-runway separation ``g_sep`` (GE19 sec. 2.6). ``None`` means runways
+        are off and excluded from the count (ASSUMPTIONS.md sec. 6).
     input_slack_bits, exact_modular:
         See :class:`WindowedMultiplyAdd`.
     """
@@ -510,7 +510,7 @@ class WindowedModExp(Bloq):
         if math.gcd(self.base, self.mod) != 1:
             raise ValueError(f"base {self.base} must be coprime to mod {self.mod}")
         if self.coset_padding is not None and self.coset_padding < 0:
-            raise ValueError(f"coset_padding must be ≥ 0, got {self.coset_padding}")
+            raise ValueError(f"coset_padding must be >= 0, got {self.coset_padding}")
         if self.runway_sep is not None:
             _require_positive_int("runway_sep", self.runway_sep)
         if self.exact_modular and self.padding:
@@ -602,7 +602,7 @@ class WindowedModExp(Bloq):
             )
             addr, x = bb.add(mod_mul, addr=addr, x=x)
             exp_bits[hi - win_bits : hi] = bb.split(addr)
-            # Next window's base: g^(2^((j+1)·w_e)).
+            # Next window's base: g^(2^((j+1)*w_e)).
             base_power = pow(base_power, 1 << win_bits, self.mod)
         return {"exponent": bb.join(exp_bits, dtype=QUInt(self.exp_bitsize)), "x": x}
 
@@ -624,7 +624,7 @@ def make_ge19_windowed_modexp(
     """Build GE19's windowed ``ModExp`` for an *n_bits*-bit RSA modulus.
 
     Every default is a GE19-published value; sources and sensitivities are in
-    ASSUMPTIONS.md §2/§6.
+    ASSUMPTIONS.md sec. 2 and 6.
 
     Parameters
     ----------
@@ -635,7 +635,7 @@ def make_ge19_windowed_modexp(
     exp_window, mul_window:
         ``w_e`` and ``w_m``; swept in ``experiments/sweep_windowed_modexp.py``.
     exp_bitsize:
-        ``n_e``; defaults to ``ceil(1.5·n)``. Pass ``2*n_bits`` for Shor.
+        ``n_e``; defaults to ``ceil(1.5*n)``. Pass ``2*n_bits`` for Shor.
     coset_padding, runway_sep, input_slack_bits:
         See :class:`WindowedModExp`.
     """
@@ -662,7 +662,7 @@ _TERM_LEAVES = (Add, ModAdd, QROAMClean, QROAMCleanAdjointWrapper)
 
 @frozen
 class WindowedTermCosts:
-    """Magic-state count split across GE19 §2.5 L593-595's three cost terms."""
+    """Magic-state count split across GE19 sec. 2.5 L593-595's three cost terms."""
 
     adder_ccz: int
     lookup_ccz: int
@@ -678,7 +678,7 @@ class WindowedTermCosts:
 
         Converts Qualtran's Gidney AND-adder to GE19's Cuccaro convention;
         reported beside the unbridged total, never in place of it
-        (ASSUMPTIONS.md §6).
+        (ASSUMPTIONS.md sec. 6).
         """
         return self.total_ccz + self.adder_ccz
 

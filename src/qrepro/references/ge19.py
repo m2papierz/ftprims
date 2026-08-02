@@ -3,7 +3,7 @@
 Two stages: reconcile GE19's closed form against Qualtran's ``ModExp``
 call-graph count, then feed the GE19 formula count through the surface-code
 layer to reproduce Table 2/3's rows plus sensitivity sweeps. Inputs and
-conventions: ASSUMPTIONS.md §2/§3.
+conventions: ASSUMPTIONS.md sec. 2 and 3.
 
 ``ModExp`` is GE19's reference construction; the windowed one is reproduced in
 ``qrepro.references.ge19_windowed``.
@@ -37,7 +37,7 @@ def ge19_formula_logical_costs() -> LogicalCosts:
 def modexp_coefficient_series(
     sizes: tuple[int, ...] = MODEXP_COEFFICIENT_SIZES,
 ) -> tuple[tuple[int, float], ...]:
-    """Measured ``n_ccz / (ne·n²)`` for ``ModExp`` at each n in *sizes*."""
+    """Measured ``n_ccz / (ne*n^2)`` for ``ModExp`` at each n in *sizes*."""
     return tuple(
         (
             n,
@@ -119,10 +119,10 @@ def reproduce_ge19_physical() -> GE19PhysicalReproduction:
 class GE19LogicalReproduction:
     """GE19 logical-count reconciliation: closed form vs ModExp call graph.
 
-    ``half_reference_fitted`` is half GE19 §2.2 L522's ``20·ne·n²``, a fitted
+    ``half_reference_fitted`` is half GE19 sec. 2.2 L522's ``20*ne*n^2``, a fitted
     coefficient and therefore a regression pin rather than evidence.
     ``coefficient_series`` carries the non-circular attribution
-    (ASSUMPTIONS.md §3).
+    (ASSUMPTIONS.md sec. 3).
     """
 
     n: int
@@ -136,7 +136,7 @@ class GE19LogicalReproduction:
 
     @property
     def measured_coefficient(self) -> float:
-        """Measured ``n_ccz / (ne·n²)`` at ``ne = 2n``."""
+        """Measured ``n_ccz / (ne*n^2)`` at ``ne = 2n``."""
         ne = 2 * self.n
         return self.modexp_ccz_count / (ne * self.n**2)
 
@@ -153,7 +153,7 @@ class GE19LogicalReproduction:
             ReproductionRow.make("ModExp / formula", "ratio", self.divergence_ratio),
             ReproductionRow.make(
                 "measured coefficient",
-                "n_ccz/(ne·n²)",
+                "n_ccz/(ne*n^2)",
                 self.measured_coefficient,
                 self.ge19_reference_coefficient,
             ),
@@ -165,7 +165,7 @@ class GE19PhysicalReproduction:
     """GE19 physical rows (1-factory and parallel) plus sensitivity sweeps.
 
     qrepro emits a per-run duration, so ``*_per_run`` targets come from GE19
-    Table 3 and ``*_expected`` from Table 2 (ASSUMPTIONS.md §3).
+    Table 3 and ``*_expected`` from Table 2 (ASSUMPTIONS.md sec. 3).
     """
 
     error_budget: float

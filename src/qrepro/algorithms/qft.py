@@ -33,7 +33,7 @@ def _build_qft(*, n: int, variant: str = "textbook") -> Bloq:
         )
 
     if n < 1:
-        raise ValueError(f"Bitsize must be ≥ 1, got {n}")
+        raise ValueError(f"Bitsize must be >= 1, got {n}")
 
     if variant == "textbook":
         return QFTTextBook(bitsize=n)
@@ -102,7 +102,7 @@ class QFTBenchmark(Benchmark):
             jk = np.outer(np.arange(N), np.arange(N))
             F = omega**jk / np.sqrt(N)
 
-            # Global-phase-invariant overlap: |tr(F† U)| / N == 1.
+            # Global-phase-invariant overlap: |tr(F^dag U)| / N == 1.
             overlap = np.abs(np.trace(F.conj().T @ U)) / N
             if not np.isclose(overlap, 1.0, atol=1e-4):
                 return VerificationResult(
@@ -110,7 +110,7 @@ class QFTBenchmark(Benchmark):
                     detail=f"Unitary does not match DFT (overlap={overlap:.6f})",
                 )
 
-        detail = f"QFT({n}, {variant}): unitary OK ({dim}×{dim})"
+        detail = f"QFT({n}, {variant}): unitary OK ({dim}x{dim})"
         if variant == "textbook":
             detail += ", matches analytic DFT"
         return VerificationResult(status="pass", detail=detail)

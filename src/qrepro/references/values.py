@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import math
 
-# ── Beverland et al. (arXiv:2211.07629) ───────────────────────────────────────
+# Beverland et al. (arXiv:2211.07629)
 # Targets are eq.(D3)/(D4) evaluated. For quantum dynamics that differs from the
-# printed Table I values, which contradict those equations (ASSUMPTIONS.md §1).
+# printed Table I values, which contradict those equations (ASSUMPTIONS.md sec. 1).
 BEVERLAND = {
-    "quantum_dynamics": dict(  # §V-A L1369
+    "quantum_dynamics": dict(  # sec. V-A L1369
         n_algo_qubits=100,
         gate_counts=dict(rotation=30_100, measurement=1_400_000),
         n_rotation_layers=501,
@@ -26,7 +26,7 @@ BEVERLAND = {
         expect_t_states=602_000,
         expect_code_distance=9,
     ),
-    "quantum_chemistry": dict(  # §V-B L1397
+    "quantum_chemistry": dict(  # sec. V-B L1397
         n_algo_qubits=1318,
         gate_counts=dict(
             t=int(5.53e7),
@@ -42,7 +42,7 @@ BEVERLAND = {
         expect_t_states=5.44e11,
         expect_code_distance=17,
     ),
-    "factoring": dict(  # §V-C L1420
+    "factoring": dict(  # sec. V-C L1420
         n_algo_qubits=12581,
         gate_counts=dict(
             t=12,
@@ -64,52 +64,47 @@ BEVERLAND = {
 BEVERLAND_TOL = dict(rel_c_min=0.01, rel_t_states=0.01)
 
 
-# ── Gidney & Ekera 2019 (arXiv:1905.09749v3) ──────────────────────────────────
+# Gidney & Ekera 2019 (arXiv:1905.09749v3)
 
 
 def ge19_logical_qubits(n: int) -> float:
-    """GE19 abstract L78: ``3n + 0.002·n·lg n``."""
+    """GE19 abstract L78: ``3n + 0.002*n*lg n``."""
     return 3 * n + 0.002 * n * math.log2(n)
 
 
 def ge19_toffoli_count(n: int) -> float:
-    """GE19 abstract L78: ``0.3·n³ + 0.0005·n³·lg n``."""
+    """GE19 abstract L78: ``0.3*n^3 + 0.0005*n^3*lg n``."""
     return 0.3 * n**3 + 0.0005 * n**3 * math.log2(n)
 
 
-def ge19_measurement_depth(n: int) -> float:
-    """GE19 abstract L78: ``500·n² + n²·lg n``."""
-    return 500 * n**2 + n**2 * math.log2(n)
-
-
 def modexp_toffoli_reference(n: int, ne: float) -> float:
-    """GE19 §2.2 L522, reference construction: ``20·ne·n²``."""
+    """GE19 sec. 2.2 L522, reference construction: ``20*ne*n^2``."""
     return 20 * ne * n**2
 
 
 def modexp_toffoli_coset(n: int, ne: float) -> float:
-    """GE19 §2.4 L547, coset representation: ``8·ne·n²``."""
+    """GE19 sec. 2.4 L547, coset representation: ``8*ne*n^2``."""
     return 8 * ne * n**2
 
 
 def modexp_toffoli_windowed(n: int, ne: float) -> float:
-    """GE19 §2.5 L602, windowed arithmetic: ``24·ne·n²/lg²n``."""
+    """GE19 sec. 2.5 L602, windowed arithmetic: ``24*ne*n^2/lg^2n``."""
     return 24 * ne * n**2 / math.log2(n) ** 2
 
 
 def modexp_toffoli_windowed_qualtran(n: int, ne: float) -> float:
-    """``16·ne·n²/lg²n``: GE19 §2.5 L602's 24 in Qualtran's adder currency.
+    """``16*ne*n^2/lg^2n``: GE19 sec. 2.5 L602's 24 in Qualtran's adder currency.
 
-    Not a published constant; derivation in ASSUMPTIONS.md §6.
+    Not a published constant; derivation in ASSUMPTIONS.md sec. 6.
     """
     return 16 * ne * n**2 / math.log2(n) ** 2
 
 
 #: Sizes at which the ModExp coefficient is sampled to identify the regime from
-#: its scaling rather than a fitted constant (ASSUMPTIONS.md §3).
+#: its scaling rather than a fitted constant (ASSUMPTIONS.md sec. 3).
 MODEXP_COEFFICIENT_SIZES = (32, 64, 128, 256, 512, 1024, 2048)
 
-#: Sizes over which the windowed coefficient's 1/lg²n falloff is sampled; this
+#: Sizes over which the windowed coefficient's 1/lg^2n falloff is sampled; this
 #: distinguishes windowed from non-windowed on scaling alone.
 WINDOWED_COEFFICIENT_SIZES = (128, 256, 512, 1024, 2048, 4096, 8192)
 
@@ -121,7 +116,7 @@ GE19 = dict(
     reaction_us=10.0,  # abstract
     logical_qubits=6189,  # abstract formula at n=2048
     toffoli_count=2.7e9,  # Table 1
-    # Measured, qualtran 0.7.0 (ASSUMPTIONS.md §3).
+    # Measured, qualtran 0.7.0 (ASSUMPTIONS.md sec. 3).
     modexp_qualtran_toffoli=171_840_634_880,
     modexp_qualtran_and_only=171_832_246_272,
     table1_toffoli_billions=dict(n1024=0.4, n2048=2.7, n3072=9.9),
@@ -148,7 +143,7 @@ GE19 = dict(
 )
 
 # Reproduction inputs. error_budget and n_factories are GE19-published values
-# rather than free choices (ASSUMPTIONS.md §2/§3).
+# rather than free choices (ASSUMPTIONS.md sec. 2 and 3).
 GE19_QREPRO = dict(
     error_budget=0.31,  # Table 3 retry risk
     error_budget_sweep=(0.1, 0.31, 0.33, 0.5),
@@ -188,21 +183,21 @@ GE19_TOL = dict(
 )
 
 
-# ── GE19 §2.3-2.5, the windowed construction ──────────────────────────────────
+# GE19 sec. 2.3-2.5, the windowed construction
 # Reproduced from Qualtran components. Distinct from the block above, which
 # reconciles GE19 against Qualtran's stock, non-windowed ModExp. Sources,
-# conventions and achieved deviations: ASSUMPTIONS.md §6.
+# conventions and achieved deviations: ASSUMPTIONS.md sec. 6.
 
 GE19_WINDOWED = dict(
     # Construction parameters, all GE19-published rather than free choices.
-    exp_window=5,  # g_exp, GE19 §2.7 L690
+    exp_window=5,  # g_exp, GE19 sec. 2.7 L690
     mul_window=5,  # g_mul, GE19 L690
     n_e_factor=1.5,  # Ekera-Hastad, GE19 L482
-    runway_sep=None,  # g_sep excluded from the count; ASSUMPTIONS.md §6
+    runway_sep=None,  # g_sep excluded from the count; ASSUMPTIONS.md sec. 6
     ge19_runway_sep=1024,  # GE19 L690 / Table 3, for the sensitivity probe only
     coset_padding=dict(n1024=40, n2048=43, n3072=45),  # 2 lg n + lg n_e + 10, L690
     # GE19's own ancillary cost model at matched parameters. Weaker provenance
-    # than the Table 1 literals (ASSUMPTIONS.md §6).
+    # than the Table 1 literals (ASSUMPTIONS.md sec. 6).
     anc_model_toffoli=dict(n1024=4.2100e8, n2048=2.7534e9, n3072=8.6211e9),
 )
 
@@ -238,7 +233,7 @@ GE19_WINDOWED_ACHIEVED = dict(
 )
 
 # Every band was set from a measured deviation; the achieved values and the
-# cause of each gap are tabulated in ASSUMPTIONS.md §6.
+# cause of each gap are tabulated in ASSUMPTIONS.md sec. 6.
 GE19_WINDOWED_TOL = dict(
     bridged_table1_lo=dict(n1024=0.95, n2048=0.95, n3072=0.78),
     bridged_table1_hi=dict(n1024=1.20, n2048=1.10, n3072=0.95),
@@ -254,7 +249,7 @@ GE19_WINDOWED_TOL = dict(
 )
 
 
-# ── Gidney 2025 (arXiv:2505.15917) ────────────────────────────────────────────
+# Gidney 2025 (arXiv:2505.15917)
 
 G2025 = dict(
     n=2048,

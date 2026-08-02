@@ -35,11 +35,11 @@ def _build_qpe(*, m: int, phi: float, unitary: Bloq | None = None) -> Bloq:
     """Construct a ``TextbookQPE`` with *m* precision bits.
 
     *phi* is the phase in [0, 1) of the default unitary
-    ``ZPowGate(exponent=2·phi)``, whose eigenstate |1> has eigenvalue
-    e^(2πi·phi). *unitary* overrides that default.
+    ``ZPowGate(exponent=2*phi)``, whose eigenstate |1> has eigenvalue
+    exp(2*pi*i*phi). *unitary* overrides that default.
     """
     if m < 1:
-        raise ValueError(f"Precision bits must be ≥ 1, got {m}")
+        raise ValueError(f"Precision bits must be >= 1, got {m}")
     if not 0.0 <= phi < 1.0:
         raise ValueError(f"Phase must be in [0, 1), got {phi}")
 
@@ -128,7 +128,7 @@ def _verify_via_tensor(bloq: Bloq, *, m: int, phi: float) -> VerificationResult:
             status="fail",
             detail=(
                 f"Unexpected dimensions: total qubits={n_qubits}, m={m}, "
-                f"target qubits={n_target} (must be ≥ 1)"
+                f"target qubits={n_target} (must be >= 1)"
             ),
         )
 

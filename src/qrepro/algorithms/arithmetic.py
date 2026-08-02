@@ -42,7 +42,7 @@ def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
     if op not in _OPS:
         raise ValueError(f"Unknown op {op!r}; choose from {sorted(_OPS)}")
     if n < 1:
-        raise ValueError(f"Bitsize must be ≥ 1, got {n}")
+        raise ValueError(f"Bitsize must be >= 1, got {n}")
 
     if op == "add":
         return Add(QUInt(n))
