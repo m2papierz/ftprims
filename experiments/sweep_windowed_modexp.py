@@ -1,9 +1,7 @@
 """Sweep GE19's windowed modexp over the window grid and over modulus size
-(ASSUMPTIONS.md §6). CSV panels: ``window_grid``, ``falloff``, ``default_window``.
-
-Writes results/sweeps/sweep_windowed_modexp.csv and
-results/charts/windowed_modexp_sweep.png.
-"""
+(ASSUMPTIONS.md sec. 6). Writes results/sweeps/sweep_windowed_modexp.csv, panels
+``window_grid`` / ``falloff`` / ``default_window``, and
+results/charts/windowed_modexp_sweep.png."""
 
 from __future__ import annotations
 
@@ -131,7 +129,7 @@ def plot(grid_rows: list[dict], falloff_rows: list[dict], path: Path) -> None:
     apply_theme()
     fig, (ax_grid, ax_fall) = plt.subplots(1, 2, figsize=FIG_DUAL)
 
-    # ── Panel 1: cost vs window, one line per w_e ─────────────────────────────
+    # -- Panel 1: cost vs window, one line per w_e -----------------------------
     by_we: dict[int, list[dict]] = {}
     for row in grid_rows:
         by_we.setdefault(row["exp_window"], []).append(row)
@@ -166,13 +164,13 @@ def plot(grid_rows: list[dict], falloff_rows: list[dict], path: Path) -> None:
     ax_grid.legend(ncol=2)
     light_grid(ax_grid)
 
-    # ── Panel 2: the 1/lg²n falloff ──────────────────────────────────────────
+    # -- Panel 2: the 1/lg^2n falloff ------------------------------------------
     ns = [r["n"] for r in falloff_rows]
     coeffs = [r["coefficient"] for r in falloff_rows]
     ax_fall.plot(
         ns, coeffs, marker="o", color=PALETTE["blue"], label="windowed (measured)"
     )
-    # The non-windowed regime is a constant (ASSUMPTIONS.md §3).
+    # The non-windowed regime is a constant (ASSUMPTIONS.md sec. 3).
     reference = GE19["modexp_qualtran_toffoli"] / ((2 * GRID_N) * GRID_N**2)
     ax_fall.axhline(
         reference,

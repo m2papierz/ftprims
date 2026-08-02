@@ -22,9 +22,9 @@ NC='\033[0m'
 
 FAIL_COUNT=0
 
-section() { echo -e "\n${CYAN}═══ $1 ═══${NC}\n"; }
-ok()      { echo -e "${GREEN}✓ $1${NC}"; }
-fail()    { echo -e "${RED}✗ $1${NC}"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
+section() { echo -e "\n${CYAN}=== $1 ===${NC}\n"; }
+ok()      { echo -e "${GREEN}OK $1${NC}"; }
+fail()    { echo -e "${RED}X $1${NC}"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
 # Numeric runs
 section "NUMERIC RUNS (--breakdown --physical)"
@@ -125,7 +125,7 @@ for ex in "${EXPORTS[@]}"; do
         fail "export $ex"
     fi
 
-    # Symbolic export + consistency check (informational — divergence is
+    # Symbolic export + consistency check (informational - divergence is
     # expected since symbolic formulas are textbook-level approximations).
     # shellcheck disable=SC2086
     if $QREPRO export-qref $ex \
@@ -133,7 +133,7 @@ for ex in "${EXPORTS[@]}"; do
         --out "${QREF_SYM_DIR}/qref_${slug}_symbolic.yaml"; then
         ok "symbolic: qref_${slug}_symbolic.yaml"
     else
-        echo -e "${CYAN}  [info] symbolic divergence for $ex (expected — asymptotic approximation)${NC}"
+        echo -e "${CYAN}  [info] symbolic divergence for $ex (expected - asymptotic approximation)${NC}"
         ok "symbolic (with divergence): qref_${slug}_symbolic.yaml"
     fi
 done

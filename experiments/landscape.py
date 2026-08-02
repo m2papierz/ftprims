@@ -1,9 +1,6 @@
-"""Beverland-style log-log plot of physical_qubits vs wall_time, with convex
-hulls per primitive variant, over every primitive x variant x param x config.
-
-Writes results/charts/landscape.png and a repo-root landscape.png copy for the
-README.
-"""
+"""Log-log plot of physical_qubits vs wall_time with convex hulls per primitive
+variant, over every primitive x variant x param x surface-code config. Writes
+results/charts/landscape.png and the repo-root landscape.png the README embeds."""
 
 from __future__ import annotations
 
@@ -28,8 +25,7 @@ CONFIGS = [
     for f in FACTORIES
 ]
 
-# ── Visually distinct domains ─────────────────────────────────────────
-
+# Visually distinct domains: colour and marker per primitive variant.
 DOMAINS: dict[str, dict] = {
     "QFT Textbook": {
         "cases": [("qft", dict(n=n, variant="textbook")) for n in [16, 32, 64, 128]],
@@ -179,7 +175,7 @@ def plot(results: dict[str, list[tuple[float, float]]], *paths: Path) -> None:
                 zorder=1,
             )
 
-        # Legend entry — marker + filled hull swatch.
+        # Legend entry - marker + filled hull swatch.
         legend_handles.append(
             Line2D(
                 [0],

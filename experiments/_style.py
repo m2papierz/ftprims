@@ -73,12 +73,7 @@ def light_grid(ax, which: str = "both", axis: str = "both") -> None:
 
 
 def savefig(fig, *paths: Path, **kwargs) -> None:
-    """Save the figure to every *path* with tight bbox, then close it once.
-
-    Multiple paths exist for charts that are both a pipeline artifact and a
-    committed copy (see ``landscape.py``); writing them in one call keeps the
-    copies from drifting.
-    """
+    """Save the figure to every *path* with tight bbox, then close it once."""
     for path in paths:
         fig.savefig(path, bbox_inches="tight", **kwargs)
         print(f"Saved {path}")

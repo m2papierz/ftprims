@@ -1,34 +1,24 @@
-.PHONY: install setup fmt lint check test audit ci clean run-all run verify export sweeps clean-results
+.PHONY: install setup fmt test run-all run verify export sweeps clean clean-results
 
 PYTHON   ?= python3
 UV       ?= uv
 
-# ── Install ──────────────────────────────────────────────────────────────────
-
 install:
 	$(UV) sync
 	@echo ""
-	@echo "  ✓ qrepro installed (editable via uv sync)"
-
-# ── Setup (first-time contributor) ───────────────────────────────────────────
+	@echo "  OK qrepro installed (editable via uv sync)"
 
 setup: install
 	$(UV) run pre-commit install
-	@echo "  ✓ Pre-commit hooks installed"
-
-# ── Format ───────────────────────────────────────────────────────────────────
+	@echo "  OK Pre-commit hooks installed"
 
 fmt:
 	$(UV) run ruff check --select I --fix src/ tests/ experiments/ notebooks/
 	$(UV) run ruff format src/ tests/ experiments/ notebooks/
-	@echo "  ✓ Formatted"
-
-# ── Test ─────────────────────────────────────────────────────────────────────
+	@echo "  OK Formatted"
 
 test:
 	$(UV) run pytest
-
-# ── Pipeline (run_all.sh and individual stages) ─────────────────────────────
 
 run-all:
 	bash run_all.sh
@@ -64,14 +54,12 @@ sweeps:
 	$(UV) run python experiments/sweep_windowed_modexp.py
 	$(UV) run python experiments/landscape.py
 
-# ── Clean ────────────────────────────────────────────────────────────────────
-
 clean:
 	rm -rf dist/ build/ .pytest_cache/ .ruff_cache/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type d -name "*.egg-info" -exec rm -rf {} + 2>/dev/null || true
-	@echo "  ✓ Cleaned"
+	@echo "  OK Cleaned"
 
 clean-results:
 	rm -rf results/
-	@echo "  ✓ Results cleaned"
+	@echo "  OK Results cleaned"

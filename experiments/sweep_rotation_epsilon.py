@@ -1,10 +1,6 @@
-"""Sweep rotation-synthesis epsilon against QFT T-equivalent counts; the
-approximate QFT has no arbitrary-angle rotations, so the textbook/approx ratio
-measures synthesis cost alone (ASSUMPTIONS.md §2).
-
-Writes results/sweeps/sweep_rotation_epsilon.csv and
-results/charts/rotation_epsilon.png.
-"""
+"""Sweep rotation-synthesis epsilon against QFT T-equivalent counts
+(ASSUMPTIONS.md sec. 2). Writes results/sweeps/sweep_rotation_epsilon.csv and
+results/charts/rotation_epsilon.png."""
 
 from __future__ import annotations
 
@@ -107,7 +103,7 @@ def plot(rows: list[dict], path: Path) -> None:
     ax1.semilogx(eps, ratios, "o-", color=PALETTE["green"])
     for x, y in zip(eps, ratios):
         ax1.annotate(
-            f"{y:.1f}×",
+            f"{y:.1f}x",
             (x, y),
             textcoords="offset points",
             xytext=(0, 9),
@@ -124,11 +120,11 @@ def plot(rows: list[dict], path: Path) -> None:
         color=PALETTE["red"],
         linestyle="--",
         alpha=0.8,
-        label=f"Qualtran default ({qd['ratio']:.1f}×)",
+        label=f"Qualtran default ({qd['ratio']:.1f}x)",
     )
-    ax1.set_xlabel("Rotation synthesis ε")
+    ax1.set_xlabel("Rotation synthesis eps")
     ax1.set_ylabel("Textbook / Approximate T-equivalent")
-    ax1.set_title(f"QFT(n={CHART_N}): textbook/approx ratio vs ε")
+    ax1.set_title(f"QFT(n={CHART_N}): textbook/approx ratio vs eps")
     ax1.legend(fontsize=9)
     light_grid(ax1, which="both")
 
@@ -141,12 +137,12 @@ def plot(rows: list[dict], path: Path) -> None:
             [r["n"] for r in sub],
             [r["textbook_t_equiv"] for r in sub],
             "o-",
-            label=f"ε={eps_val:g}",
+            label=f"eps={eps_val:g}",
             alpha=0.9,
         )
     ax2.set_xlabel("Bitsize (n)")
     ax2.set_ylabel("Textbook QFT T-equivalent")
-    ax2.set_title("Textbook QFT T-equivalent vs n, per ε")
+    ax2.set_title("Textbook QFT T-equivalent vs n, per eps")
     ax2.legend(fontsize=8)
     light_grid(ax2, which="both")
 
