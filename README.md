@@ -1,18 +1,18 @@
 # qrepro
 
-Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Builds canonical FTQC building blocks on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq), extracts logical and surface-code physical resource costs, verifies correctness by small-scale simulation, and exports programs to [QREF](https://github.com/PsiQ/qref) for symbolic cost propagation in [Bartiq](https://github.com/PsiQ/bartiq). Published resource estimates from Beverland et al., Gidney–Ekera 2019 and Gidney 2025 are reproduced against pinned dependency versions and asserted in the test suite.
+Fault-tolerant quantum computing (FTQC) primitives benchmark suite. Builds canonical FTQC building blocks on [Qualtran](https://qualtran.readthedocs.io/) + [Cirq](https://quantumai.google/cirq), extracts logical and surface-code physical resource costs, verifies correctness by small-scale simulation, and exports programs to [QREF](https://github.com/PsiQ/qref) for symbolic cost propagation in [Bartiq](https://github.com/PsiQ/bartiq). Published resource estimates from Beverland et al., Gidney-Ekera 2019 and Gidney 2025 are reproduced against pinned dependency versions and asserted in the test suite.
 
 <p align="center">
   <img src="landscape.png" width="850" alt="FTQC Primitive Resource Landscape">
 </p>
 
 <p align="center">
-  <em>Physical resource landscape: qubits × time footprint per primitive variant as problem size scales, over all 12 surface-code configurations (2 QEC profiles × 3 data blocks × 2 magic-state factories). Layout after <a href="https://arxiv.org/abs/2211.07629">Beverland et al.</a></em>
+  <em>Physical resource landscape: qubits x time footprint per primitive variant as problem size scales, over all 12 surface-code configurations (2 QEC profiles x 3 data blocks x 2 magic-state factories). Layout after <a href="https://arxiv.org/abs/2211.07629">Beverland et al.</a></em>
 </p>
 
 ## Installation
 
-Requires Python 3.10–3.12 and [uv](https://docs.astral.sh/uv/).
+Requires Python 3.10-3.12 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 git clone https://github.com/m2papierz/qrepro.git && cd qrepro
@@ -96,13 +96,13 @@ Modular exponentiation (reference and windowed) lives in `algorithms/factoring.p
 
 ```
 src/qrepro/
-├── algorithms/      # primitive benchmarks + the Benchmark protocol and registry
-├── references/      # published-estimate reproductions; values.py holds every paper constant
-├── resource.py      # logical-cost extraction from Qualtran's QECGatesCost
-├── breakdown.py     # per-component cost attribution over the call graph
-├── physical.py      # surface-code physical estimation
-├── export.py        # QREF v1 export, numeric and symbolic
-└── cli.py           # click command group
+  algorithms/        # primitive benchmarks + the Benchmark protocol and registry
+  references/        # published-estimate reproductions; values.py holds every paper constant
+  resource.py        # logical-cost extraction from Qualtran's QECGatesCost
+  breakdown.py       # per-component cost attribution over the call graph
+  physical.py        # surface-code physical estimation
+  export.py          # QREF v1 export, numeric and symbolic
+  cli.py             # click command group
 experiments/         # parameter sweeps and the landscape chart
 notebooks/           # reproduction and pipeline notebooks
 tests/               # integration and reference tests, pinned regression literals
@@ -120,29 +120,29 @@ Measured against `qualtran==0.7.0`:
 
 | target | source | published | qrepro | deviation |
 |---|---|---|---|---|
-| Beverland quantum dynamics — `c_min` | (D3) | 1.4401e6 | 1.4401e6 | +0.00% |
-| Beverland quantum chemistry — `c_min` | (D3) | 4.1e11 | 4.1176e11 | +0.43% |
-| Beverland factoring — `c_min` | (D3) | 1.23e10 | 1.2270e10 | −0.24% |
-| GE19 Toffoli, n=2048 | abstract formula | 2.7e9 (Table 1) | 2.624e9 | −2.9% |
-| GE19 windowed CCZ, n=2048 | Table 1 | 2.7e9 | 1.635e9 | 0.605× |
-| GE19 windowed CCZ, n=2048, bridged | Table 1 | 2.7e9 | 2.712e9 | 1.004× |
+| Beverland quantum dynamics - `c_min` | (D3) | 1.4401e6 | 1.4401e6 | +0.00% |
+| Beverland quantum chemistry - `c_min` | (D3) | 4.1e11 | 4.1176e11 | +0.43% |
+| Beverland factoring - `c_min` | (D3) | 1.23e10 | 1.2270e10 | -0.24% |
+| GE19 Toffoli, n=2048 | abstract formula | 2.7e9 (Table 1) | 2.624e9 | -2.81% |
+| GE19 windowed CCZ, n=2048 | Table 1 | 2.7e9 | 1.635e9 | 0.605x |
+| GE19 windowed CCZ, n=2048, bridged | Table 1 | 2.7e9 | 2.712e9 | 1.004x |
 | GE19 1-factory qubits | Table 2 | 16 M | 17.97 M | +12.3% |
-| GE19 parallel (28f) qubits | Table 2/3 | 20 M | 17.26 M | −13.7% |
-| GE19 parallel (28f) runtime, per run | Table 3 | 5.1 hr | 4.567 hr | −10.5% |
-| G2025 physical qubits | abstract | < 1e6 | 3.19 M | not reproducible — see below |
+| GE19 parallel (28f) qubits | Table 2/3 | 20 M | 17.26 M | -13.7% |
+| GE19 parallel (28f) runtime, per run | Table 3 | 5.1 hr | 4.567 hr | -10.5% |
+| G2025 physical qubits | abstract | < 1e6 | 3.19 M | not reproducible - see below |
 
 `notebooks/reference_reproductions.ipynb` computes every number in this table live and asserts it before printing. `notebooks/qft_pipeline.ipynb` walks the full QRE pipeline for QFT using Qualtran/QREF/Bartiq directly.
 
-The windowed modular exponentiation (GE19 §2.3–2.5) is built from stock Qualtran components in `algorithms/windowed_factoring.py`, giving a second derivation of the 2.7e9 regime that does not go through the paper's closed forms. Bridging the one component that differs — Qualtran's Gidney AND-adder against GE19's Cuccaro adder, ×2 on ~66% of the count — moves n=2048 from 0.605× to 1.004× Table 1. Both figures are reported; the bridge is never folded into the primary count.
+The windowed modular exponentiation (GE19 sec. 2.3-2.5) is built from stock Qualtran components in `algorithms/windowed_factoring.py`, giving a second derivation of the 2.7e9 regime that does not go through the paper's closed forms. Bridging the one component that differs - Qualtran's Gidney AND-adder against GE19's Cuccaro adder, x2 on ~66% of the count - moves n=2048 from 0.605x to 1.004x Table 1. Both figures are reported; the bridge is never folded into the primary count.
 
-Sensitivity sweeps: `experiments/sweep_rotation_epsilon.py` (synthesis precision), `experiments/sweep_ge19_physical.py` (error budget × factory count), `experiments/sweep_windowed_modexp.py` (window grid and the 1/lg²n regime test).
+Sensitivity sweeps: `experiments/sweep_rotation_epsilon.py` (synthesis precision), `experiments/sweep_ge19_physical.py` (error budget x factory count), `experiments/sweep_windowed_modexp.py` (window grid and the `1/lg^2 n` regime test).
 
 ## Output format
 
 Logical costs report two T-count metrics:
 
-- `t_count_direct` — raw T-gates + 4× the magic-state count (Qualtran's And, Toffoli and CSwap, via `total_t_and_ccz_count`). Accurate for pure Clifford+T circuits.
-- `t_count_ftqc` — adds rotation synthesis at `T ≈ 3·log₂(1/ε)`, i.e. ~100 T per rotation at the default `rotation_synthesis_epsilon = 1e-10`. Rotation *counts* are ε-independent; T-equivalent *ratios* are not.
+- `t_count_direct`: raw T-gates + 4x the magic-state count (Qualtran's And, Toffoli and CSwap, via `total_t_and_ccz_count`). Accurate for pure Clifford+T circuits.
+- `t_count_ftqc`: adds rotation synthesis at `T = 3*log2(1/eps)`, i.e. ~100 T per rotation at the default `rotation_synthesis_epsilon = 1e-10`. Rotation *counts* are eps-independent; T-equivalent *ratios* are not.
 
 `--breakdown` adds per-component attribution and the dominant component, over the categories `rotations`, `qft_qpe_core`, `qrom_core`, `arithmetic_core`, `controlled_nonclifford`, `clifford_scaffolding`, `other`. Physical estimates carry `failure_prob` and `budget_satisfied`, and record the `profile`, `data_block` and `factory` used.
 
@@ -152,13 +152,13 @@ Every published constant, free parameter, convention, tolerance and known diverg
 
 ## Limitations
 
-- **QPE verification** — `tensor_contract` / Cirq interop fails for `TextbookQPE` (Qualtran limitation). Costs and breakdown are correct; only small-scale unitary verification skips.
-- **Symbolic export** — analytic formulas are textbook-level approximations; numeric export is authoritative.
-- **No retry model** — the physical layer emits a per-run duration only.
-- **No yoked codes or magic-state cultivation** — G2025's sub-million estimate is not representable in a CCZ2T model, so it is decomposed rather than reproduced.
-- **Logical qubits for factoring are analytic, not traced** — `QubitCount` is O(gates) and does not terminate at n=2048.
-- **The coset representation is not simulated** — the windowed construction's correctness is asserted at toy sizes on the exact `ModAdd` variant, not on the padded configuration the reported counts are built from. All correctness checks are permutation-level and cannot detect a relative-phase error.
+- **QPE verification.** `tensor_contract` / Cirq interop fails for `TextbookQPE` (Qualtran limitation). Costs and breakdown are correct; only small-scale unitary verification skips.
+- **Symbolic export.** Analytic formulas are textbook-level approximations; numeric export is authoritative.
+- **No retry model.** The physical layer emits a per-run duration only.
+- **No yoked codes or magic-state cultivation.** G2025's sub-million estimate is not representable in a CCZ2T model, so it is decomposed rather than reproduced.
+- **Logical qubits for factoring are analytic, not traced.** `QubitCount` is O(gates) and does not terminate at n=2048.
+- **The coset representation is not simulated.** The windowed construction's correctness is asserted at toy sizes on the exact `ModAdd` variant, not on the padded configuration the reported counts are built from. All correctness checks are permutation-level and cannot detect a relative-phase error.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT - see [LICENSE](LICENSE).
