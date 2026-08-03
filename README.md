@@ -31,7 +31,7 @@ uv run qrepro run qft -p n=32                          # logical costs only
 uv run qrepro run qft -p n=32 --physical               # + surface-code physical estimate
 uv run qrepro run qft -p n=32 --physical --breakdown   # + per-component cost attribution
 uv run qrepro run arithmetic -p n=64 -p op=mul
-uv run qrepro run qrom -p data_size=256 -p variant=selectswap -p log_block_sizes=4
+uv run qrepro run qrom -p data_size=256 -p target_bitsize=8
 ```
 
 `--out results/qft.json` saves the result as JSON.
@@ -75,7 +75,7 @@ Key options: `rotation_synthesis_epsilon` (default `1e-10`), `error_budget` (def
 make run-all      # full pipeline: benchmarks, verification, QREF export, sweeps, reproductions
 make test         # integration and reference-reproduction tests
 make verify       # small-scale Cirq simulation checks
-make sweeps       # assumption sweeps + resource landscape => CSV + PNG
+make sweeps       # assumption sweeps (CSV) + landscape and regime charts (PNG)
 make fmt          # ruff import-sort + format
 ```
 
@@ -87,8 +87,8 @@ make fmt          # ruff import-sort + format
 |-----------|----------|------------|
 | QFT | Textbook, Approximate | T-count vs n (incl. rotation synthesis) |
 | QPE | Textbook (pluggable U) | T-count vs precision bits |
-| Arithmetic | Add, OutOfPlaceAdder, LessThanEqual, Product, ModAdd | T-count vs bitsize |
-| QROM | QROM, SelectSwapQROM | T-count vs table size |
+| Arithmetic | Add, OutOfPlaceAdder, Product, ModAdd | T-count vs bitsize |
+| QROM | QROM | T-count vs table size |
 
 Modular exponentiation (reference and windowed) lives in `algorithms/factoring.py` and `algorithms/windowed_factoring.py`. It is not a CLI primitive; it is driven by the reproductions below.
 
@@ -103,7 +103,7 @@ src/qrepro/
   physical.py        # surface-code physical estimation
   export.py          # QREF v1 export, numeric and symbolic
   cli.py             # click command group
-experiments/         # parameter sweeps and the landscape chart
+experiments/         # parameter sweeps (sweep_*.py) and charts (plot_*.py)
 notebooks/           # reproduction and pipeline notebooks
 tests/               # integration and reference tests, pinned regression literals
 ```
@@ -131,7 +131,7 @@ Measured against `qualtran==0.7.0`:
 | GE19 parallel (28f) runtime, per run | Table 3 | 5.1 hr | 4.567 hr | -10.5% |
 | G2025 physical qubits | abstract | < 1e6 | 3.19 M | not reproducible - see below |
 
-`notebooks/reference_reproductions.ipynb` computes every number in this table live and asserts it before printing. `notebooks/qft_pipeline.ipynb` walks the full QRE pipeline for QFT using Qualtran/QREF/Bartiq directly.
+`notebooks/reference_reproductions.ipynb` computes every number in this table live and asserts it before printing; it contains nothing but the reproductions. `notebooks/qft_pipeline.ipynb` walks the full QRE pipeline for QFT (logical costs, verification, bitsize sweep, rotation-synthesis sensitivity, QREF export, Bartiq compilation, physical layer) against Qualtran/QREF/Bartiq directly, taking only the cited synthesis-cost model from `qrepro`.
 
 The windowed modular exponentiation (GE19 sec. 2.3-2.5) is built from stock Qualtran components in `algorithms/windowed_factoring.py`, giving a second derivation of the 2.7e9 regime that does not go through the paper's closed forms. Bridging the one component that differs - Qualtran's Gidney AND-adder against GE19's Cuccaro adder, x2 on ~66% of the count - moves n=2048 from 0.605x to 1.004x Table 1. Both figures are reported; the bridge is never folded into the primary count.
 
