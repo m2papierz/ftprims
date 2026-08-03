@@ -1,21 +1,16 @@
 """Sweep rotation-synthesis epsilon against QFT T-equivalent counts
-(ASSUMPTIONS.md sec. 2). Writes results/sweeps/sweep_rotation_epsilon.csv and
-results/charts/rotation_epsilon.png."""
+(ASSUMPTIONS.md sec. 2). Writes results/sweeps/sweep_rotation_epsilon.csv."""
 
 from __future__ import annotations
 
 import csv
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
-from _style import FIG_DUAL, PALETTE, apply_theme, light_grid, savefig
 from qrepro.algorithms import registry
 from qrepro.resource import rotation_synthesis_t_cost
 
 EPSILONS = [1e-3, 1e-6, 1e-8, 1e-10, 1e-12, 1e-15]
 BITSIZES = [8, 16, 32, 64, 128]
-CHART_N = 32
 
 
 def qualtran_default_row(n: int) -> dict:
@@ -89,77 +84,12 @@ def save_csv(rows: list[dict], path: Path) -> None:
     print(f"Saved {path}")
 
 
-def plot(rows: list[dict], path: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIG_DUAL)
-
-    numeric = [r for r in rows if r["epsilon"] != "qualtran_default"]
-
-    # Left: ratio vs epsilon at the charted bitsize.
-    subset = sorted(
-        (r for r in numeric if r["n"] == CHART_N), key=lambda r: r["epsilon"]
-    )
-    eps = [r["epsilon"] for r in subset]
-    ratios = [r["ratio"] for r in subset]
-    ax1.semilogx(eps, ratios, "o-", color=PALETTE["green"])
-    for x, y in zip(eps, ratios):
-        ax1.annotate(
-            f"{y:.1f}x",
-            (x, y),
-            textcoords="offset points",
-            xytext=(0, 9),
-            ha="center",
-            fontsize=8,
-            color=PALETTE["green"],
-            fontweight="bold",
-        )
-    qd = next(
-        r for r in rows if r["n"] == CHART_N and r["epsilon"] == "qualtran_default"
-    )
-    ax1.axhline(
-        y=qd["ratio"],
-        color=PALETTE["red"],
-        linestyle="--",
-        alpha=0.8,
-        label=f"Qualtran default ({qd['ratio']:.1f}x)",
-    )
-    ax1.set_xlabel("Rotation synthesis eps")
-    ax1.set_ylabel("Textbook / Approximate T-equivalent")
-    ax1.set_title(f"QFT(n={CHART_N}): textbook/approx ratio vs eps")
-    ax1.legend(fontsize=9)
-    light_grid(ax1, which="both")
-
-    # Right: textbook T-equivalent vs n, one line per epsilon.
-    for eps_val in EPSILONS:
-        sub = sorted(
-            (r for r in numeric if r["epsilon"] == eps_val), key=lambda r: r["n"]
-        )
-        ax2.loglog(
-            [r["n"] for r in sub],
-            [r["textbook_t_equiv"] for r in sub],
-            "o-",
-            label=f"eps={eps_val:g}",
-            alpha=0.9,
-        )
-    ax2.set_xlabel("Bitsize (n)")
-    ax2.set_ylabel("Textbook QFT T-equivalent")
-    ax2.set_title("Textbook QFT T-equivalent vs n, per eps")
-    ax2.legend(fontsize=8)
-    light_grid(ax2, which="both")
-
-    plt.tight_layout()
-    savefig(fig, path)
-
-
 def main() -> None:
-    apply_theme()
     csv_dir = Path("results/sweeps")
-    chart_dir = Path("results/charts")
     csv_dir.mkdir(parents=True, exist_ok=True)
-    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect(registry["qft"])
     save_csv(rows, csv_dir / "sweep_rotation_epsilon.csv")
-    plot(rows, chart_dir / "rotation_epsilon.png")
 
 
 if __name__ == "__main__":

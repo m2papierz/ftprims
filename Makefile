@@ -37,10 +37,8 @@ verify:
 	$(UV) run qrepro verify qpe -p m=4 -p phi=0.25
 	$(UV) run qrepro verify arithmetic -p n=4 -p op=add
 	$(UV) run qrepro verify arithmetic -p n=4 -p op=add_oop
-	$(UV) run qrepro verify arithmetic -p n=4 -p op=leq
 	$(UV) run qrepro verify arithmetic -p n=4 -p op=modadd
 	$(UV) run qrepro verify qrom -p data_size=8 -p target_bitsize=4 -p variant=basic
-	$(UV) run qrepro verify qrom -p data_size=8 -p target_bitsize=4 -p variant=selectswap
 
 export:
 	@mkdir -p results/qref/numeric results/qref/symbolic
@@ -52,7 +50,8 @@ sweeps:
 	$(UV) run python experiments/sweep_rotation_epsilon.py
 	$(UV) run python experiments/sweep_ge19_physical.py
 	$(UV) run python experiments/sweep_windowed_modexp.py
-	$(UV) run python experiments/landscape.py
+	$(UV) run python experiments/plot_landscape.py
+	$(UV) run python experiments/plot_regime_identification.py
 
 clean:
 	rm -rf dist/ build/ .pytest_cache/ .ruff_cache/

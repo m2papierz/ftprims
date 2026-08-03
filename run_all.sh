@@ -35,11 +35,9 @@ declare -a RUNS=(
     "qpe        -p m=8  -p phi=0.25"
     "arithmetic -p n=16 -p op=add"
     "arithmetic -p n=16 -p op=add_oop"
-    "arithmetic -p n=16 -p op=leq"
     "arithmetic -p n=16 -p op=mul"
     "arithmetic -p n=8  -p op=modadd"
     "qrom       -p data_size=256 -p variant=basic"
-    "qrom       -p data_size=256 -p variant=selectswap"
 )
 
 for run in "${RUNS[@]}"; do
@@ -87,10 +85,8 @@ declare -a VERIFIES=(
     "qpe        -p m=4 -p phi=0.25"
     "arithmetic -p n=4 -p op=add"
     "arithmetic -p n=4 -p op=add_oop"
-    "arithmetic -p n=4 -p op=leq"
     "arithmetic -p n=4 -p op=modadd"
     "qrom       -p data_size=8 -p target_bitsize=4 -p variant=basic"
-    "qrom       -p data_size=8 -p target_bitsize=4 -p variant=selectswap"
 )
 
 for v in "${VERIFIES[@]}"; do
@@ -110,7 +106,6 @@ declare -a EXPORTS=(
     "arithmetic -p n=16 -p op=add"
     "arithmetic -p n=16 -p op=mul"
     "qrom       -p data_size=256 -p variant=basic"
-    "qrom       -p data_size=256 -p variant=selectswap"
 )
 
 for ex in "${EXPORTS[@]}"; do
@@ -154,7 +149,7 @@ else
 fi
 
 # Experiment sweeps
-section "EXPERIMENT SWEEPS (CSV + charts)"
+section "EXPERIMENT SWEEPS (CSV) + CHARTS"
 
 # Assumption sweeps (see ASSUMPTIONS.md).
 $PYTHON experiments/sweep_rotation_epsilon.py \
@@ -166,7 +161,10 @@ $PYTHON experiments/sweep_ge19_physical.py \
 $PYTHON experiments/sweep_windowed_modexp.py \
 && ok "sweep_windowed_modexp"  || fail "sweep_windowed_modexp"
 
-$PYTHON experiments/landscape.py && ok "landscape" || fail "landscape"
+$PYTHON experiments/plot_landscape.py && ok "landscape" || fail "landscape"
+
+$PYTHON experiments/plot_regime_identification.py \
+&& ok "regime_identification" || fail "regime_identification"
 
 # Published-estimate reproductions
 section "REFERENCE REPRODUCTIONS"

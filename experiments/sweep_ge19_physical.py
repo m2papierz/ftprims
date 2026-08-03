@@ -1,23 +1,18 @@
 """Sweep the GE19 physical reproduction over error_budget x n_factories;
 deviations use matched conventions (ASSUMPTIONS.md sec. 3). Writes
-results/sweeps/sweep_ge19_physical.csv and results/charts/ge19_physical_sweep.png."""
+results/sweeps/sweep_ge19_physical.csv."""
 
 from __future__ import annotations
 
 import csv
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-
-from _style import FIG_DUAL, PALETTE, apply_theme, light_grid, savefig
 from qrepro.physical import estimate_physical_grid_search
 from qrepro.references.ge19 import ge19_formula_logical_costs
 from qrepro.references.values import GE19
 
 ERROR_BUDGETS = [0.1, 0.2, 0.31, 0.4, 0.5]
 FACTORY_COUNTS = [1, 2, 4, 8, 14, 16, 20, 28, 32]
-
-GE19_PARALLEL_FACTORIES = 28  # GE19 Table 2 parallel row
 
 
 # GE19 publishes a comparable row only at these factory counts (Table 2).
@@ -96,79 +91,12 @@ def save_csv(rows: list[dict], path: Path) -> None:
     print(f"Saved {path}")
 
 
-def plot(rows: list[dict], path: Path) -> None:
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=FIG_DUAL)
-    target_q = GE19["physical_rows"]["parallel"]["qubits_M"]
-    target_t = GE19["physical_rows"]["table3_authoritative"]["runtime_hr_per_run"]
-
-    # Left: qubits vs factory count, one line per error budget.
-    for eb in ERROR_BUDGETS:
-        sub = sorted(
-            (r for r in rows if r["error_budget"] == eb), key=lambda r: r["n_factories"]
-        )
-        ax1.plot(
-            [r["n_factories"] for r in sub],
-            [r["physical_qubits_M"] for r in sub],
-            "o-",
-            label=f"eb={eb}",
-            alpha=0.9,
-        )
-    ax1.axhline(
-        y=target_q,
-        color=PALETTE["red"],
-        linestyle="--",
-        label=f"GE19 Table 2 ({target_q} M)",
-    )
-    ax1.axvline(
-        x=GE19_PARALLEL_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7
-    )
-    ax1.set_xlabel("Parallel magic-state factories")
-    ax1.set_ylabel("Physical qubits (millions)")
-    ax1.set_title("GE19 parallel row: qubits")
-    ax1.legend(fontsize=8)
-    light_grid(ax1)
-
-    # Right: per-run runtime vs factory count.
-    for eb in ERROR_BUDGETS:
-        sub = sorted(
-            (r for r in rows if r["error_budget"] == eb), key=lambda r: r["n_factories"]
-        )
-        ax2.loglog(
-            [r["n_factories"] for r in sub],
-            [r["runtime_hr_per_run"] for r in sub],
-            "o-",
-            label=f"eb={eb}",
-            alpha=0.9,
-        )
-    ax2.axhline(
-        y=target_t,
-        color=PALETTE["red"],
-        linestyle="--",
-        label=f"GE19 Table 3 ({target_t} hr/run)",
-    )
-    ax2.axvline(
-        x=GE19_PARALLEL_FACTORIES, color=PALETTE["gray"], linestyle=":", alpha=0.7
-    )
-    ax2.set_xlabel("Parallel magic-state factories")
-    ax2.set_ylabel("Runtime (hours, per run)")
-    ax2.set_title("GE19 parallel row: runtime")
-    ax2.legend(fontsize=8)
-    light_grid(ax2, which="both")
-
-    plt.tight_layout()
-    savefig(fig, path)
-
-
 def main() -> None:
-    apply_theme()
     csv_dir = Path("results/sweeps")
-    chart_dir = Path("results/charts")
     csv_dir.mkdir(parents=True, exist_ok=True)
-    chart_dir.mkdir(parents=True, exist_ok=True)
 
     rows = collect()
     save_csv(rows, csv_dir / "sweep_ge19_physical.csv")
-    plot(rows, chart_dir / "ge19_physical_sweep.png")
 
 
 if __name__ == "__main__":
