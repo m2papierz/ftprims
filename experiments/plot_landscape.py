@@ -1,5 +1,5 @@
 """Log-log plot of physical_qubits vs wall_time with convex hulls per primitive
-variant, over every primitive x variant x param x surface-code config. Writes
+variant, over the DOMAINS grid x every param x surface-code config. Writes
 results/charts/landscape.png and the repo-root landscape.png the README embeds."""
 
 from __future__ import annotations
@@ -27,11 +27,6 @@ CONFIGS = [
 
 # Visually distinct domains: colour and marker per primitive variant.
 DOMAINS: dict[str, dict] = {
-    "QFT Textbook": {
-        "cases": [("qft", dict(n=n, variant="textbook")) for n in [16, 32, 64, 128]],
-        "color": "#2563EB",  # blue
-        "marker": "o",
-    },
     "QFT Approximate": {
         "cases": [("qft", dict(n=n, variant="approx")) for n in [8, 16, 32, 64, 128]],
         "color": "#0891B2",  # cyan
@@ -55,11 +50,6 @@ DOMAINS: dict[str, dict] = {
         "cases": [("arithmetic", dict(n=n, op="mul")) for n in [8, 16, 32, 64]],
         "color": "#7C3AED",  # violet
         "marker": "P",
-    },
-    "Comparator": {
-        "cases": [("arithmetic", dict(n=n, op="leq")) for n in [16, 32, 64, 128, 256]],
-        "color": "#E11D48",  # rose
-        "marker": "v",
     },
     "QROM Basic": {
         "cases": [

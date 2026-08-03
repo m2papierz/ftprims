@@ -13,6 +13,7 @@ PALETTE = {
     "orange": "#D97706",
     "purple": "#7C3AED",
     "gray": "#6B7280",
+    "dark_gray": "#374151",
     "teal": "#0D9488",
     "pink": "#DB2777",
 }
@@ -61,10 +62,6 @@ _RC_OVERRIDES = {
 def apply_theme() -> None:
     """Apply the shared rcParams theme. Call once per script."""
     plt.rcParams.update(_RC_OVERRIDES)
-
-
-# Canonical figure sizes.
-FIG_DUAL = (13, 5)
 
 
 def light_grid(ax, which: str = "both", axis: str = "both") -> None:
