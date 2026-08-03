@@ -1,17 +1,10 @@
-"""QROM benchmark: ``QROM`` and ``SelectSwapQROM``.
-
-``SelectSwapQROM`` trades ancilla qubits for fewer T-gates; the trade-off point
-is set by ``log_block_sizes``.
-"""
+"""QROM benchmark: unary-iteration ``QROM`` over a random lookup table."""
 
 from __future__ import annotations
-
-import math
 
 import numpy as np
 from qualtran import Bloq
 from qualtran.bloqs.data_loading.qrom import QROM
-from qualtran.bloqs.data_loading.select_swap_qrom import SelectSwapQROM
 
 from qrepro.algorithms._base import (
     Benchmark,
@@ -23,7 +16,7 @@ from qrepro.resource import extract_logical_costs
 
 __all__ = ["QROMBenchmark"]
 
-_VARIANTS = {"basic", "selectswap"}
+_VARIANTS = {"basic"}
 _MAX_VERIFY_DATA_SIZE = 32
 _RNG_SEED = 42
 
@@ -39,13 +32,10 @@ def _build_qrom(
     data_size: int,
     target_bitsize: int = 8,
     variant: str = "basic",
-    log_block_sizes: int | None = None,
 ) -> Bloq:
-    """Construct a ``QROM`` or ``SelectSwapQROM`` bloq.
+    """Construct a ``QROM`` bloq.
 
     *data_size* is the number of table entries and must be a power of two >= 2.
-    *log_block_sizes* is the ``selectswap`` block-size exponent, in
-    [1, log2(data_size) - 1]; it is ignored for ``basic``.
     """
     if variant not in _VARIANTS:
         raise ValueError(
@@ -58,23 +48,8 @@ def _build_qrom(
     if target_bitsize < 1:
         raise ValueError(f"target_bitsize must be >= 1, got {target_bitsize}")
 
-    if variant == "selectswap" and log_block_sizes is not None:
-        sel_bits = int(math.log2(data_size))
-        if not (1 <= log_block_sizes < sel_bits):
-            raise ValueError(
-                f"log_block_sizes must be in [1, {sel_bits - 1}] for "
-                f"data_size={data_size}, got {log_block_sizes}"
-            )
-
     data = _generate_data(data_size, target_bitsize)
-
-    if variant == "basic":
-        return QROM.build_from_data(data, target_bitsizes=(target_bitsize,))
-
-    kwargs: dict = {"target_bitsizes": (target_bitsize,)}
-    if log_block_sizes is not None:
-        kwargs["log_block_sizes"] = (int(log_block_sizes),)
-    return SelectSwapQROM.build_from_data(data, **kwargs)
+    return QROM.build_from_data(data, target_bitsizes=(target_bitsize,))
 
 
 @register
@@ -89,15 +64,11 @@ class QROMBenchmark(Benchmark):
         data_size: int = 256,
         target_bitsize: int = 8,
         variant: str = "basic",
-        log_block_sizes: int | None = None,
     ) -> Bloq:
         return _build_qrom(
             data_size=int(data_size),
             target_bitsize=int(target_bitsize),
             variant=str(variant),
-            log_block_sizes=(
-                int(log_block_sizes) if log_block_sizes is not None else None
-            ),
         )
 
     def logical_costs(
@@ -117,7 +88,6 @@ class QROMBenchmark(Benchmark):
         data_size: int = 8,
         target_bitsize: int = 4,
         variant: str = "basic",
-        log_block_sizes: int | None = None,
     ) -> VerificationResult:
         """Verify QROM via ``call_classically`` on every table entry."""
         data_size = int(data_size)
@@ -136,7 +106,6 @@ class QROMBenchmark(Benchmark):
             data_size=data_size,
             target_bitsize=target_bitsize,
             variant=variant,
-            log_block_sizes=log_block_sizes,
         )
 
         for sel in range(data_size):

@@ -81,15 +81,6 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
             "n_qubits": "3*n + 1",
         },
     },
-    ("arithmetic", "leq"): {
-        "required_params": ["n"],
-        "resources": {
-            "T_gates_direct": "4*(2*n - 1)",
-            "rotations": "0",
-            "cliffords": "8*n",
-            "n_qubits": "2*n + 1",
-        },
-    },
     # Schoolbook Product(n, n): n*(2n-1) And gates. QECGatesCost reports zero
     # Cliffords at this level.
     ("arithmetic", "mul"): {
@@ -119,17 +110,6 @@ _SYMBOLIC_COSTS: dict[tuple[str, str], _SymbolicEntry] = {
             "rotations": "0",
             "cliffords": "4*data_size",
             "n_qubits": "ceil(log2(data_size)) + target_bitsize",
-        },
-    },
-    # At the default block size k = log2(sqrt(N)) the T-count scales as
-    # O(sqrt(N) * target_bitsize). Diverges at small N.
-    ("qrom", "selectswap"): {
-        "required_params": ["data_size", "target_bitsize"],
-        "resources": {
-            "T_gates_direct": "4*ceil(sqrt(data_size))*target_bitsize",
-            "rotations": "0",
-            "cliffords": "4*data_size",
-            "n_qubits": "ceil(log2(data_size)) + 2*target_bitsize",
         },
     },
 }
@@ -277,7 +257,6 @@ def check_symbolic_consistency(
         **{k: v for k, v in params.items() if isinstance(v, (int, float))},
         "ceil": _math.ceil,
         "log2": _math.log2,
-        "sqrt": _math.sqrt,
     }
 
     symbolic_vals: dict[str, int | str] = {}

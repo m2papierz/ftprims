@@ -17,7 +17,6 @@ QREF_CASES = [
     ("arithmetic", dict(n=16, op="mul"), 16),
     ("qpe", dict(m=8, phi=0.25), None),
     ("qrom", dict(data_size=256, variant="basic"), None),
-    ("qrom", dict(data_size=256, variant="selectswap"), None),
 ]
 
 
@@ -115,9 +114,6 @@ BREAKDOWN_ITEMS = {
     ("qrom", "basic"): [
         ("controlled_nonclifford", 1012, 0, 1012),
     ],
-    ("qrom", "selectswap"): [
-        ("qrom_core", 880, 0, 880),
-    ],
 }
 
 _BUILD_PARAMS = {
@@ -126,7 +122,6 @@ _BUILD_PARAMS = {
     ("qpe", "default"): dict(m=8, phi=0.25),
     ("arithmetic", "add"): dict(n=16, op="add"),
     ("qrom", "basic"): dict(data_size=256, variant="basic"),
-    ("qrom", "selectswap"): dict(data_size=256, variant="selectswap"),
 }
 
 

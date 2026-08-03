@@ -38,7 +38,6 @@ REFERENCE_CASES = [
     Case(
         "arithmetic", dict(n=16, op="add_oop"), 64, 64, 49, 0, "controlled_nonclifford"
     ),
-    Case("arithmetic", dict(n=16, op="leq"), 124, 124, 80, 0, "arithmetic_core"),
     Case(
         "arithmetic", dict(n=16, op="mul"), 1984, 1984, 64, 0, "controlled_nonclifford"
     ),
@@ -51,9 +50,6 @@ REFERENCE_CASES = [
         23,
         0,
         "controlled_nonclifford",
-    ),
-    Case(
-        "qrom", dict(data_size=256, variant="selectswap"), 880, 880, 53, 0, "qrom_core"
     ),
 ]
 
@@ -73,10 +69,8 @@ VERIFY_CASES = [
     ("qft", dict(n=4, variant="approx")),
     ("arithmetic", dict(n=4, op="add")),
     ("arithmetic", dict(n=4, op="add_oop")),
-    ("arithmetic", dict(n=4, op="leq")),
     ("arithmetic", dict(n=4, op="modadd")),
     ("qrom", dict(data_size=8, target_bitsize=4, variant="basic")),
-    ("qrom", dict(data_size=8, target_bitsize=4, variant="selectswap")),
 ]
 
 
@@ -238,7 +232,6 @@ def test_verify_small_passes(name, params):
         ("arithmetic", "n", [8, 16, 32, 64], dict(op="add")),
         ("arithmetic", "n", [8, 16, 32, 64], dict(op="mul")),
         ("qrom", "data_size", [16, 64, 256], dict(variant="basic")),
-        ("qrom", "data_size", [16, 64, 256], dict(variant="selectswap")),
     ],
     ids=[
         "qft_textbook_n",
@@ -246,7 +239,6 @@ def test_verify_small_passes(name, params):
         "arith_add_n",
         "arith_mul_n",
         "qrom_basic_N",
-        "qrom_selectswap_N",
     ],
 )
 def test_t_count_monotonic(name, param_key, sizes, fixed):
@@ -275,20 +267,4 @@ def test_approx_qft_cheaper_than_textbook():
         assert ap.t_count_ftqc < tb.t_count_ftqc, (
             f"n={n}: approx T_ftqc={ap.t_count_ftqc} >= "
             f"textbook T_ftqc={tb.t_count_ftqc}"
-        )
-
-
-def test_selectswap_qrom_cheaper_at_large_n():
-    """SelectSwapQROM must have fewer T-gates than basic QROM for large N."""
-    bench = registry["qrom"]
-    for data_size in [512, 1024]:
-        basic = bench.logical_costs(
-            bench.build_bloq(data_size=data_size, variant="basic")
-        )
-        swap = bench.logical_costs(
-            bench.build_bloq(data_size=data_size, variant="selectswap")
-        )
-        assert swap.t_count_ftqc < basic.t_count_ftqc, (
-            f"N={data_size}: selectswap T_ftqc={swap.t_count_ftqc} >= "
-            f"basic T_ftqc={basic.t_count_ftqc}"
         )

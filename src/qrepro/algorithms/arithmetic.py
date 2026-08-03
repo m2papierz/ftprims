@@ -1,5 +1,4 @@
-"""Arithmetic benchmark: ``Add``, ``OutOfPlaceAdder``, ``LessThanEqual``,
-``Product``, ``ModAdd``.
+"""Arithmetic benchmark: ``Add``, ``OutOfPlaceAdder``, ``Product``, ``ModAdd``.
 
 Each op maps to one Qualtran bloq; verification runs ``call_classically``
 against Python integer arithmetic.
@@ -12,7 +11,7 @@ from typing import Callable
 
 from qualtran import Bloq
 from qualtran._infra.data_types import QUInt
-from qualtran.bloqs.arithmetic import Add, LessThanEqual, OutOfPlaceAdder
+from qualtran.bloqs.arithmetic import Add, OutOfPlaceAdder
 from qualtran.bloqs.arithmetic.multiplication import Product
 from qualtran.bloqs.mod_arithmetic.mod_addition import ModAdd
 
@@ -26,7 +25,7 @@ from qrepro.resource import extract_logical_costs
 
 __all__ = ["ArithmeticBenchmark"]
 
-_OPS = {"add", "add_oop", "leq", "mul", "modadd"}
+_OPS = {"add", "add_oop", "mul", "modadd"}
 _MAX_VERIFY_N = 6
 _VERIFY_SAMPLES = 20
 _VERIFY_RNG_SEED = 0
@@ -48,8 +47,6 @@ def _build_arithmetic(*, n: int, op: str, mod: int | None = None) -> Bloq:
         return Add(QUInt(n))
     if op == "add_oop":
         return OutOfPlaceAdder(bitsize=n)
-    if op == "leq":
-        return LessThanEqual(x_bitsize=n, y_bitsize=n)
     if op == "mul":
         return Product(a_bitsize=n, b_bitsize=n)
     if op == "modadd":
@@ -99,17 +96,6 @@ def _oracle_add_oop(n: int) -> _ClassicalOracle:
     return check
 
 
-def _oracle_leq(_n: int) -> _ClassicalOracle:
-    """LessThanEqual: target -> (x <= y)."""
-
-    def check(x: int, y: int, _mod: int) -> tuple[dict, dict]:
-        inputs = dict(x=x, y=y, target=0)
-        expected = dict(x=x, y=y, target=int(x <= y))
-        return inputs, expected
-
-    return check
-
-
 def _oracle_modadd(_n: int) -> _ClassicalOracle:
     """ModAdd: y -> (x + y) mod p."""
 
@@ -124,7 +110,6 @@ def _oracle_modadd(_n: int) -> _ClassicalOracle:
 _ORACLES: dict[str, Callable[[int], _ClassicalOracle]] = {
     "add": _oracle_add,
     "add_oop": _oracle_add_oop,
-    "leq": _oracle_leq,
     "modadd": _oracle_modadd,
 }
 
